@@ -7,7 +7,10 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-ubc-solar-physics = "=0.1.11"
+jupyterlab = "^4.2.4"
+scipy = "^1.14.0"
+ubc-solar-physics = {git = "https://github.com/UBC-Solar/physics.git", rev = "main"}
+ubc-solar-data-tools = {git = "https://github.com/UBC-Solar/data_tools.git", rev = "main"}
 
 
 [build-system]
