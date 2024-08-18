@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "data-analysis"
-version = "0.1.0"
+version = "0.1.1"
 description = "UBC Solar's data analysis environment"
 authors = ["Joshua Riefman <joshuariefman@gmail.com>"]
 readme = "README.md"
