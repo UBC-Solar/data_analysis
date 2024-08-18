@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "data-analysis"
+version = "0.1.0"
+description = "UBC Solar's data analysis environment"
+authors = ["Joshua Riefman <joshuariefman@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+ubc-solar-physics = "=0.1.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
