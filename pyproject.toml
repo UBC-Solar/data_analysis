@@ -11,6 +11,7 @@ jupyterlab = "^4.2.4"
 scipy = "^1.14.0"
 ubc-solar-physics = {git = "https://github.com/UBC-Solar/physics.git", rev = "main"}
 ubc-solar-data-tools = {git = "https://github.com/UBC-Solar/data_tools.git", rev = "main"}
+ipykernel = "^6.29.5"
 
 
 [build-system]
