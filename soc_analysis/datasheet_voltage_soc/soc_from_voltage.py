@@ -1,5 +1,3 @@
-from math import isnan
-
 import numpy as np
 from numpy import ndarray
 
@@ -39,7 +37,7 @@ curve_points_mah_v = points_usable_energy
 curve_points_mah_v[:, 0] = max_discharge_mah - points_usable_energy[:, 0]
 
 
-# ---------- Interpolate curve at x_vals ----------
+# ---------- Interpolate curve at q_vals ----------
 
 num_points = 500
 x_vals = np.linspace(0, max_discharge_mah, num_points)
