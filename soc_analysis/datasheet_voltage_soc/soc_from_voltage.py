@@ -1,5 +1,8 @@
+from typing import Tuple
+
 import numpy as np
 from numpy import ndarray
+from data_tools import DBClient, FSGPDayLaps, TimeSeries
 
 # ---------- Obtain the charge-voltage curve from the datasheet ----------
 
@@ -91,4 +94,21 @@ def cell_soc_from_voltage(cell_voltages: ndarray) -> ndarray:
     """
     return energy_of_voltage(cell_voltages) / MAX_CELL_ENERGY
 
-pass
+def get_day_voltage_data(day: int, client: DBClient) -> tuple[TimeSeries, TimeSeries]:
+    """
+    Get the minimum module and total pack voltage as a tuple for an FSGP race day
+
+    :param day: the race day of FSGP 2024, - should be 1, 2 or 3
+    :param client: client to use to query data
+    :return: tuple of (day_minimum_module, day_pack_voltage)
+    :type: tuple[TimeSeries, TimeSeries]
+    """
+    laps = FSGPDayLaps(day)
+
+    day_start = laps.get_start_utc(1)
+    day_stop = laps.get_finish_utc(laps.get_lap_count())
+
+    day_minimum_module = client.query_time_series(day_start, day_stop, "VoltageofLeast")
+    day_pack_voltage = client.query_time_series(day_start, day_stop, "TotalPackVoltage")
+
+    return day_minimum_module, day_pack_voltage
