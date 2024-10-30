@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from irradiance_timeseries import open_meteo_archive_timeseries, IrradianceData
 import matplotlib.pyplot as plt
+import numpy as np
 
 class ArraySource(Enum):
     STRING_1 = 1
@@ -86,13 +87,23 @@ if __name__ == "__main__":
         NCM_MOTORSPORTS_LONG = -86.3709907
         TIMEZONE = "GMT"  # same as UTC
 
-        dni = open_meteo_archive_timeseries(NCM_MOTORSPORTS_LAT,
+        ghi_hourly = open_meteo_archive_timeseries(NCM_MOTORSPORTS_LAT,
                                             NCM_MOTORSPORTS_LONG,
                                             QUERY_FIRST_DAY,
                                             QUERY_LAST_DAY,
-                                            IrradianceData.DNI,
+                                            IrradianceData.GHI,
                                             TIMEZONE)
 
-        combined_pow, dni = TimeSeries.align(combined_pow, dni)
+        ghi = ghi_hourly.promote(np.interp(combined_pow.x_axis, ghi_hourly.x_axis, ghi_hourly))
 
+        combined_pow, ghi = TimeSeries.align(combined_pow, ghi)
+
+        plt.plot(combined_pow, label="Array Power (W)")
+        plt.plot(ghi, label="GHI (W/m^2)")
+        plt.title(f"Day {day} Array Power vs. GHI")
+        plt.xlabel("Time Since Start (s * 0.1)")
+        plt.ylabel("W or W/m^2 lol")
+        plt.grid(True)
+        plt.legend(loc="best")
+        plt.show()
         pass

@@ -1,3 +1,4 @@
+import numpy as np
 from data_tools import TimeSeries
 import openmeteo_requests
 from datetime import datetime, timedelta
@@ -17,12 +18,14 @@ class IrradianceData(enum.Enum):
     DHI = "diffuse_radiation_instant"
 
 
-def open_meteo_archive_timeseries(latitude: float,
-                                      longitude: float,
-                                      start_date: str,
-                                      end_date: str,
-                                      field: IrradianceData,
-                                      timezone: str = "GMT") -> TimeSeries:
+def open_meteo_archive_timeseries(
+        latitude: float,
+        longitude: float,
+        start_date: str,
+        end_date: str,
+        field: IrradianceData,
+        timezone: str = "GMT",
+        granularity = 0.1) -> TimeSeries:
 
     # Set up the Open-Meteo API client with cache and retry on error
     # cache_session = requests_cache.CachedSession('.cache', expire_after=-1)
@@ -50,20 +53,22 @@ def open_meteo_archive_timeseries(latitude: float,
     print(f"Timezone difference to GMT+0 {response.UtcOffsetSeconds()} s")
 
     # Process hourly data. The order of variables needs to be the same as requested.
-    hourly = response.Hourly()
-    hourly_data = hourly.Variables(0).ValuesAsNumpy()
+    hourly = response.Hourly().Variables(0).ValuesAsNumpy()
 
-    query_start: datetime = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=pytz.UTC)
-    query_stop: datetime = (datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=pytz.UTC)
-                            + timedelta(hours=24))
+    total_seconds = response.Hourly().Interval() * len(hourly)
+    interpolated_data = np.interp(
+        np.linspace(0, total_seconds, int(np.floor(total_seconds / granularity))),
+        np.linspace(0, len(hourly) - 1, len(hourly)),
+        hourly
+    )
 
-    return TimeSeries(hourly_data, meta={
-        "start": query_start,
-        "stop": query_stop,
+    return TimeSeries(interpolated_data, meta={
+        "start": response.Hourly().Time(),
+        "stop": response.Hourly().TimeEnd(),
         "car": "Brightside",
         "measurement": "Irradiance",
         "field": field.value,
         "granularity": 0.1,
-        "length": len(hourly_data),
-        "units": "W/m^2",
+        "length": len(interpolated_data),
+        "units": response.Hourly().Variables(0).Unit(),
     })
