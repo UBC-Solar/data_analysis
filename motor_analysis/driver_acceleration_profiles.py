@@ -57,6 +57,7 @@ if __name__ == "__main__":
     lap_speed_variances = []
     lap_power_variances = []
     lap_speed_arrs = []
+    lap_speeds = []
 
     for day_laps, lap_indices in zip((laps1, laps3), (day_1_idx, day_3_idx)):
         for lap_idx in lap_indices:
@@ -71,6 +72,8 @@ if __name__ == "__main__":
             lap_power_variances.append(np.var(lap_powers[-1].base))
             lap_speed_arrs.append(get_lap_speeds(lap_start, lap_end, data_client))
             lap_speed_variances.append(np.var(lap_speed_arrs[-1].base))
+            lap_speeds.append(day_laps.get_lap_mph(lap_num))
+
             print(f"{len(lap_energies)=}", f"{lap_idx=}")
             print(f"Total motor energy for lap {lap_num}: {lap_energies[-1][-1]}J\n"
                   f"Speed Variance: {lap_speed_variances[-1]}\n")
@@ -84,37 +87,68 @@ if __name__ == "__main__":
     lap_drivers = np.array(lap_drivers)
     lap_speed_variances = np.array(lap_speed_variances)
     lap_power_variances = np.array(lap_power_variances)
+    lap_speeds = np.array(lap_speeds)
 
     driver_colours = {
         "Alex": "red",
         "Bryan": "orange",
         "Diego": "green",
+
         "Phoebe": "blue"
     }
 
     FSGP_TRACK_LEN_M = 5_070
     lap_efficiencies = lap_energies / FSGP_TRACK_LEN_M
 
-    for driver, colour in driver_colours.items():
-        plt.scatter(lap_speed_variances[lap_drivers == driver],
-                    lap_efficiencies[lap_drivers == driver],
-                    c=colour,
-                    label=f"Driver: {driver}")
-    plt.xlabel("Lap Speed Variance")
-    plt.ylabel("Lap Efficiency (J/m)")
-    plt.legend()
-    plt.title(f"Lap Speed Variance vs. Lap Efficiency (J/m) by Driver")
-    plt.show()
+    # for driver, colour in driver_colours.items():
+    #     plt.scatter(lap_speed_variances[lap_drivers == driver],
+    #                 lap_efficiencies[lap_drivers == driver],
+    #                 c=colour,
+    #                 label=f"Driver: {driver}")
+    # plt.xlabel("Lap Speed Variance")
+    # plt.ylabel("Lap Efficiency (J/m)")
+    # plt.legend()
+    # plt.title(f"Lap Speed Variance vs. Lap Efficiency (J/m) by Driver")
+    # plt.show()
+    #
+    # for driver, colour in driver_colours.items():
+    #     plt.scatter(lap_power_variances[lap_drivers == driver],
+    #                 lap_efficiencies[lap_drivers == driver],
+    #                 c=colour,
+    #                 label=f"Driver: {driver}")
+    # plt.xlabel("Lap Power Variance")
+    # plt.ylabel("Lap Efficiency (J/m)")
+    # plt.legend()
+    # plt.title(f"Lap Power Variance vs. Lap Efficiency (J/m) by Driver")
+    # plt.show()
+
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+
+    n = 100
+
+    # # For each set of style and range settings, plot n random points in the box
+    # # defined by x in [23, 32], y in [0, 100], z in [zlow, zhigh].
+    # for m, zlow, zhigh in [('o', -50, -25), ('^', -30, -5)]:
+    #     xs = randrange(n, 23, 32)
+    #     ys = randrange(n, 0, 100)
+    #     zs = randrange(n, zlow, zhigh)
+    #     ax.scatter(xs, ys, zs, marker=m)
+    #
+    # ax.set_xlabel('X Label')
+    # ax.set_ylabel('Y Label')
+    # ax.set_zlabel('Z Label')
 
     for driver, colour in driver_colours.items():
-        plt.scatter(lap_power_variances[lap_drivers == driver],
-                    lap_efficiencies[lap_drivers == driver],
-                    c=colour,
-                    label=f"Driver: {driver}")
-    plt.xlabel("Lap Power Variance")
-    plt.ylabel("Lap Efficiency (J/m)")
-    plt.legend()
-    plt.title(f"Lap Power Variance vs. Lap Efficiency (J/m) by Driver")
+        ax.scatter(lap_speeds[lap_drivers == driver],
+                   lap_power_variances[lap_drivers == driver],
+                   lap_efficiencies[lap_drivers == driver],
+                   c=colour,
+                   label=f"Driver: {driver}")
+    ax.set_xlabel('Average Speed (mph)')
+    ax.set_ylabel('Power Variance')
+    ax.set_zlabel('Lap Efficiency (J/m)')
     plt.show()
-
-    breakpoint()
+    plt.legend()
+    plt.title(f"Lap Efficiency vs. Lap Power Variance and Speed by Driver")
+    plt.show()
