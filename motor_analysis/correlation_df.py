@@ -104,13 +104,14 @@ def collect_lap_data(laps1: FSGPDayLaps, laps3: FSGPDayLaps, client: DBClient) -
             lap = LapData(lap_start, lap_end, client)
             metrics = lap.get_metrics()
             
-            # Add driver, speed, and timing data from timing data
+            # Add driver and speed from timing data
             metrics.update({
-                "driver": day_laps.get_lap_driver(lap_num),
-                "speed_avg_(mph)": day_laps.get_lap_mph(lap_num),
-                "lap_start_time": lap_start,
+                "lap_index": lap_idx,
+                "lap_number": lap_idx + 1,
                 "lap_end_time": lap_end,
-                "day": day_laps.day
+                "day": day_laps.day,
+                "driver": day_laps.get_lap_driver(lap_num),
+                "speed_avg_(mph)": day_laps.get_lap_mph(lap_num)
             })
             
             # Calculate efficiencies
@@ -121,9 +122,6 @@ def collect_lap_data(laps1: FSGPDayLaps, laps3: FSGPDayLaps, client: DBClient) -
     
     # Create DataFrame
     df = pd.DataFrame(all_data)
-    
-    # Filter out incomplete laps
-    # distance_filter = np.logical_and(df["lap_distance_(m)"] > 5000, df["lap_distance_(m)"] < 5200)
     return df
 
 if __name__ == "__main__":
