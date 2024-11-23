@@ -73,7 +73,8 @@ class LapData:
         
         return {
             "lap_distance_(m)": distance,
-            "energy_total_(J)": energy,
+            "lap_energy_(J)": energy,
+            "lap_energy_(kJ)": energy * 1000,
             "energy_regen_(J)": regen_energy,
             "speed_variance_(mph^2)": speed_var,
             "motor_power_variance_(W^2)": power_var,
@@ -115,8 +116,8 @@ def collect_lap_data(laps1: FSGPDayLaps, laps3: FSGPDayLaps, client: DBClient) -
             })
             
             # Calculate efficiencies
-            metrics["efficiency_practical_(J/m)"] = metrics["energy_total_(J)"] / FSGP_TRACK_LEN_M
-            metrics["efficiency_real_(J/m)"] = metrics["energy_total_(J)"] / metrics["lap_distance_(m)"]
+            metrics["efficiency_practical_(J/m)"] = metrics["lap_energy_(J)"] / FSGP_TRACK_LEN_M
+            metrics["efficiency_real_(J/m)"] = metrics["lap_energy_(J)"] / metrics["lap_distance_(m)"]
             
             all_data.append(metrics)
     
