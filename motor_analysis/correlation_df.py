@@ -74,8 +74,9 @@ class LapData:
         return {
             "lap_distance_(m)": distance,
             "lap_energy_(J)": energy,
-            "lap_energy_(kJ)": energy * 1000,
+            "lap_energy_(kJ)": energy / 1000,
             "energy_regen_(J)": regen_energy,
+            "energy_regen_(kJ)": regen_energy / 1000,
             "speed_variance_(mph^2)": speed_var,
             "motor_power_variance_(W^2)": power_var,
             "motor_current_variance_(A^2)": current_var,
