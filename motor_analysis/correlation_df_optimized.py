@@ -106,6 +106,10 @@ def collect_lap_data(laps1: FSGPDayLaps, laps3: FSGPDayLaps, client: DBClient) -
             
             # Add driver and speed from timing data
             metrics.update({
+                "lap_index": lap_idx,
+                "lap_number": lap_idx + 1,
+                "lap_end_time": lap_end,
+                "day": day_laps.day,
                 "driver": day_laps.get_lap_driver(lap_num),
                 "speed_avg_(mph)": day_laps.get_lap_mph(lap_num)
             })
@@ -118,10 +122,7 @@ def collect_lap_data(laps1: FSGPDayLaps, laps3: FSGPDayLaps, client: DBClient) -
     
     # Create DataFrame
     df = pd.DataFrame(all_data)
-    
-    # Filter out incomplete laps
-    distance_filter = np.logical_and(df["lap_distance_(m)"] > 5000, df["lap_distance_(m)"] < 5200)
-    return df[distance_filter]
+    return df
 
 if __name__ == "__main__":
     data_client = DBClient("can_log_prod")
