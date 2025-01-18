@@ -53,22 +53,4 @@ def open_meteo_archive_timeseries(
     print(f"Timezone difference to GMT+0 {response.UtcOffsetSeconds()} s")
 
     # Process hourly data. The order of variables needs to be the same as requested.
-    hourly = response.Hourly().Variables(0).ValuesAsNumpy()
-
-    total_seconds = response.Hourly().Interval() * len(hourly)
-    interpolated_data = np.interp(
-        np.linspace(0, total_seconds, int(np.floor(total_seconds / granularity))),
-        np.linspace(0, len(hourly) - 1, len(hourly)),
-        hourly
-    )
-
-    return TimeSeries(interpolated_data, meta={
-        "start": response.Hourly().Time(),
-        "stop": response.Hourly().TimeEnd(),
-        "car": "Brightside",
-        "measurement": "Irradiance",
-        "field": field.value,
-        "granularity": 0.1,
-        "length": len(interpolated_data),
-        "units": response.Hourly().Variables(0).Unit(),
-    })
+    return response.Hourly().Variables(0).ValuesAsNumpy()
