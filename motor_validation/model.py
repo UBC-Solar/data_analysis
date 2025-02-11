@@ -1,9 +1,12 @@
 import numpy as np
-import math
 from physics.environment.gis import GIS
 from geopy.distance import geodesic  # For distance calculation
 import matplotlib.pyplot as plt
 import pandas as pd
+
+from efficiencies import calculate_motor_efficiency, calculate_motor_controller_efficiency
+from plotting import plot_power, plot_forces, plot_cornering_data, plot_singe_value
+from cornering_stuff import calculate_radii, get_slip_angle_for_tire_force
 
 
 from typing import Union
@@ -40,27 +43,12 @@ bs_config = {
 AIR_DENSITY = 1.225
 ACCELERATION_G = 9.81
 
-
-def calculate_motor_efficiency_value(motor_output_power, revolutions_per_minute):
-    return 0.7382 - (6.281e-5 * motor_output_power) + (6.708e-4 * revolutions_per_minute) \
-        - (2.89e-8 * motor_output_power ** 2) + (2.416e-7 * motor_output_power * revolutions_per_minute) \
-        - (8.672e-7 * revolutions_per_minute ** 2) + (5.653e-12 * motor_output_power ** 3) \
-        - (1.74e-11 * motor_output_power ** 2 * revolutions_per_minute) \
-        - (7.322e-11 * motor_output_power * revolutions_per_minute ** 2) \
-        + (3.263e-10 * revolutions_per_minute ** 3)
-
-
-def calculate_motor_controller_efficiency_value(motor_angular_speed, motor_torque_array):
-    return 0.7694 + (0.007818 * motor_angular_speed) + (0.007043 * motor_torque_array) \
-        - (1.658e-4 * motor_angular_speed ** 2) - (1.806e-5 * motor_torque_array * motor_angular_speed) \
-        - (1.909e-4 * motor_torque_array ** 2) + (1.602e-6 * motor_angular_speed ** 3) \
-        + (4.236e-7 * motor_angular_speed ** 2 * motor_torque_array) \
-        - (2.306e-7 * motor_angular_speed * motor_torque_array ** 2) \
-        + (2.122e-06 * motor_torque_array ** 3) - (5.701e-09 * motor_angular_speed ** 4) \
-        - (2.054e-9 * motor_angular_speed ** 3 * motor_torque_array) \
-        - (3.126e-10 * motor_angular_speed ** 2 * motor_torque_array ** 2) \
-        + (1.708e-09 * motor_angular_speed * motor_torque_array ** 3) \
-        - (8.094e-09 * motor_torque_array ** 4)
+# Temporary constants for testing
+vehicle_mass = bs_config["vehicle_mass"]
+drag_coefficient = bs_config["drag_coefficient"]
+vehicle_frontal_area = bs_config["vehicle_frontal_area"]
+road_friction = bs_config["road_friction"]
+tire_radius = bs_config["tire_radius"]
 
 def forward_fill_nans(array: np.ndarray):
     for i in range(1, len(array)):
@@ -68,72 +56,55 @@ def forward_fill_nans(array: np.ndarray):
             array[i] = array[i - 1]
     return array
 
-def calculate_motor_efficiency(motor_angular_speed, motor_output_energy, tick):
-    """
-
-    Calculates a NumPy array of motor efficiency from NumPy array of operating angular speeds and NumPy array
-        of output power. Based on data obtained from NGM SC-M150 Datasheet and modelling done in MATLAB
-
-    r squared value: 0.873
-
-    :param np.ndarray motor_angular_speed: (float[N]) angular speed motor operates in rad/s
-    :param np.ndarray motor_output_energy: (float[N]) energy motor outputs to the wheel in J
-    :param float tick: length of 1 update cycle in seconds
-    :returns e_m: (float[N]) efficiency of the motor
-    :rtype: np.ndarray
-
-    """
-
-    # Power = Energy / Time
-    motor_output_power = motor_output_energy * tick
-    rads_rpm_conversion_factor = 30 / math.pi
-
-    revolutions_per_minute = motor_angular_speed * rads_rpm_conversion_factor
-
-    e_m = calculate_motor_efficiency_value(motor_output_power, revolutions_per_minute)
-
-    e_m[e_m < 0.7382] = 0.7382
-    e_m[e_m > 1] = 1
-
-    return e_m
 
 def calculate_total_motor_power(array, tick_start, tick_end):
     return np.cumsum(array[tick_start:tick_end]) * tick_end
 
-def calculate_motor_controller_efficiency(motor_angular_speed, motor_output_energy, tick):
-    """
 
-    Calculates a NumPy array of motor controller efficiency from NumPy array of operating angular speeds and
-    NumPy array of output power. Based on data obtained from the WaveSculptor Motor Controller Datasheet efficiency
-    curve for a 90 V DC Bus and modelling done in MATLAB.
+def calculate_cornering_losses(required_speed_kmh, gis_waypoints, tick):
+    required_speed_ms = required_speed_kmh / 3.6
 
-    r squared value: 0.7431
+    cornering_radii = calculate_radii(gis_waypoints)
+    plot_singe_value(cornering_radii)
+    centripetal_lateral_force = vehicle_mass * (required_speed_ms ** 2) / cornering_radii
+    centripetal_lateral_force = np.clip(centripetal_lateral_force, a_min=0, a_max=10000)
 
-    :param np.ndarray motor_angular_speed: (float[N]) angular speed motor operates in rad/s
-    :param np.ndarray motor_output_energy: (float[N]) energy motor outputs to the wheel in J
-    :param float tick: length of 1 update cycle in seconds
-    :returns e_mc (float[N]) efficiency of the motor controller
-    :rtype: np.ndarray
+    slip_angles_degrees = get_slip_angle_for_tire_force(centripetal_lateral_force)
+    slip_angles_radians = np.radians(slip_angles_degrees)
 
-    """
+    slip_distances = np.tan(slip_angles_radians) * required_speed_ms * tick
+    cornering_friction_work = slip_distances * centripetal_lateral_force
 
-    # Power = Energy / Time
-    motor_output_power = motor_output_energy / tick
+    plot_cornering_data(slip_distances, slip_angles_degrees, centripetal_lateral_force)
 
-    # Torque = Power / Angular Speed
-    motor_torque_array = np.nan_to_num(motor_output_power / motor_angular_speed)
+    print("total slip distances: ")
+    print(np.sum(slip_distances))
+    print("\ntotal cornering_friction_work: ")
+    print(np.sum(cornering_friction_work))
+    print("\n")
 
-    np.seterr(divide='warn', invalid='warn')
+    #   # Check for values above 8000 in centripetal_lateral_force
+    # for i, force in enumerate(centripetal_lateral_force):
+    #     if force > 8000:
+    #         print(f"High centripetal force detected: {force} N")
+    #         print(f"Speed: {required_speed_ms[i]} m/s")
+    #         print(f"Cornering Radius: {cornering_radii[i]} m")
+    #         print("\n \n")
+    # Plotting the slip angles
+    # import matplotlib.pyplot as plt
+    # plt.figure(figsize=(10, 6))
+    # plt.plot(slip_angles_degrees, marker='o', linestyle='-', color='b')
+    # plt.title('plot')
+    # plt.xlabel('index')
+    # plt.ylabel('value')
+    # plt.grid(True)
+    # plt.show()
 
-    e_mc = calculate_motor_controller_efficiency_value(motor_angular_speed, motor_torque_array)
-
-    e_mc[e_mc < 0.9] = 0.9
-    e_mc[e_mc > 1] = 1
-
-    return e_mc
+    CORNERING_COEFFICIENT = 1
+    return cornering_friction_work * CORNERING_COEFFICIENT
 
 
-def calculate_energy_in(required_speed_kmh, gradients, wind_speeds, tick):
+def calculate_energy_in(required_speed_kmh, gradients, wind_speeds, gis_waypoints, tick):
     """
 
     Create a function which takes in array of elevation, array of wind speed, required
@@ -150,13 +121,6 @@ def calculate_energy_in(required_speed_kmh, gradients, wind_speeds, tick):
 
     DRAG_COEF = 1
 
-    # Temporary constants for testing
-    vehicle_mass = bs_config["vehicle_mass"]
-    drag_coefficient = bs_config["drag_coefficient"]
-    vehicle_frontal_area = bs_config["vehicle_frontal_area"]
-    road_friction = bs_config["road_friction"]
-    tire_radius = bs_config["tire_radius"]
-
     required_speed_ms = required_speed_kmh / 3.6
 
     acceleration_ms2 = np.clip(np.gradient(required_speed_ms), a_min=0, a_max=None)
@@ -172,7 +136,9 @@ def calculate_energy_in(required_speed_kmh, gradients, wind_speeds, tick):
 
     road_friction_array = road_friction * vehicle_mass * ACCELERATION_G * np.cos(angles)
 
-    net_force = road_friction_array + drag_forces + g_forces + acceleration_force
+    cornering_force = calculate_cornering_losses(required_speed_kmh, gis_waypoints, tick)
+
+    net_force = road_friction_array + drag_forces + g_forces + acceleration_force + cornering_force
 
     motor_output_energies = required_angular_speed_rads * net_force * tire_radius * tick
     motor_output_energies = np.clip(motor_output_energies, a_min=0, a_max=None)
@@ -186,43 +152,17 @@ def calculate_energy_in(required_speed_kmh, gradients, wind_speeds, tick):
     motor_controller_input_energies = np.where(motor_controller_input_energies > 0,
                                                motor_controller_input_energies, 0)
 
+    plot_forces(
+        drag_forces,
+        g_forces,
+        acceleration_force,
+        net_force,
+        cornering_force,
+        required_speed_kmh,
+        gradients)
+
     return motor_controller_input_energies
 
-def calculate_speed_kmh(gis_coords: np.ndarray) -> np.ndarray:
-    """
-    Calculate speed (km/h) between GIS waypoints, assuming 1 second intervals.
-
-    :param gis_coords: A NumPy array of shape (N, 2) containing latitude and longitude pairs.
-    :return: A NumPy array of speed values (km/h) for each segment.
-    """
-    num_points = len(gis_coords)
-    if num_points < 2:
-        return np.array([])
-
-    # Create a copy to prevent modifying the original array
-    gis_coords = gis_coords.copy()
-
-    # TODO: this should really zero out speeds associated with Nan values since these occured during pitting
-    # Forward fill NaN values since they mess with distance calculations
-    for i in range(1, len(gis_coords)):
-        if np.isnan(gis_coords[i]).any():
-            gis_coords[i] = gis_coords[i - 1]
-
-
-    speed_kmh = np.zeros(num_points - 1)
-
-    for i in range(1, num_points):
-        # Get previous and current coordinates (lat, lon)
-        prev_point = tuple(gis_coords[i - 1])
-        curr_point = tuple(gis_coords[i])
-
-        # Compute distance in meters using geopy (Haversine formula)
-        distance_m = geodesic(prev_point, curr_point).meters
-
-        # Compute speed in km/h (since time difference = 1 second)
-        speed_kmh[i - 1] = (distance_m / 1) * 3.6  # Convert m/s to km/h
-
-    return speed_kmh
 
 def run_motor_model() -> (np.ndarray, np.ndarray):
     """
@@ -233,6 +173,7 @@ def run_motor_model() -> (np.ndarray, np.ndarray):
     # from /Simulation/simulation/cache/route/route_data.npz
     route_data = np.load("route_data_FSGP.npz")
     gis_coords = np.load("coords_day1.npy")
+    forward_fill_nans(gis_coords)
     gis_indices = np.load("coord_indices_day1.npy")
 
 
@@ -243,8 +184,9 @@ def run_motor_model() -> (np.ndarray, np.ndarray):
     gis_indices = np.round(gis_indices).astype(int)  # Convert to integers
 
     # ----- Expected distance estimate -----
-    speed_kmh = load_data("vehicle_velocity.csv")
-    speed_kmh = np.append(speed_kmh, 0)  # Proper way to append a value to a NumPy array
+    speed_ms = load_data("vehicle_velocity.csv")
+    speed_ms = np.append(speed_ms, 0)  # Proper way to append a value to a NumPy array
+    speed_kmh = speed_ms * 3.6
 
     """ closest_gis_indices is a 1:1 mapping between each point which has within it a timestamp and cumulative
             distance from a starting point, to its closest point on a map.
@@ -295,11 +237,11 @@ def run_motor_model() -> (np.ndarray, np.ndarray):
 
     # ----- Energy Calculations -----
 
-
     motor_consumed_energy = calculate_energy_in(
         speed_kmh,
         gradients,
         wind_speeds,
+        gis_coords,
         tick
     )
 
@@ -315,8 +257,7 @@ def load_data(path):
 
 motor_power_predicted, gradient_global = run_motor_model()
 
-# Generate tick indices
-ticks = np.arange(len(motor_power_predicted))
+
 
 motor_current = load_data("motor_current.csv")
 motor_voltage = load_data("motor_voltage.csv")
@@ -326,46 +267,17 @@ motor_power_measured = np.append(motor_power_measured, 0)
 vehicle_velocity = np.append(vehicle_velocity, 0)
 
 
-predicted_sum = calculate_total_motor_power(motor_power_predicted, 0, 18000)[-1]
-measured_sum = calculate_total_motor_power(motor_power_measured, 0, 18000)[-1]
+predicted_sum = calculate_total_motor_power(motor_power_predicted, 0, len(motor_power_predicted) - 10)[-1]
+measured_sum = calculate_total_motor_power(motor_power_measured, 0, len(motor_power_predicted) - 10)[-1]
 percent_error = predicted_sum * 100 / measured_sum
+
 print(f'\n\n\n')
 print(f'________ Predicted Total Energy: {predicted_sum}')
 print(f'________ Measured Total Energy: {measured_sum}')
 print(f'________ Percent Error: {percent_error}')
 print(f'\n\n\n')
 
-# ----- Plotting Logic -----
 
-fig, ax1 = plt.subplots(figsize=(10, 5))
-
-# Plot motor power (Predicted & Measured) on the primary y-axis
-ax1.plot(ticks, motor_power_predicted, linestyle='-', label="Predicted Motor Power", color='blue')
-ax1.plot(ticks, motor_power_measured, linestyle='-', label="Measured Motor Power", color='red')
-ax1.set_xlabel("Tick")
-ax1.set_ylabel("Power (Watts)", color='black')
-ax1.tick_params(axis='y', labelcolor='black')
-ax1.grid(True)
-
-# Create secondary y-axis for vehicle velocity
-ax2 = ax1.twinx()
-ax2.plot(ticks, vehicle_velocity, linestyle='-', label="Vehicle Velocity", color='green')
-ax2.set_ylabel("Vehicle Velocity (km/h)", color='green')
-ax2.tick_params(axis='y', labelcolor='green')
-
-ax3 = ax1.twinx()
-ax3.plot(ticks, gradient_global, linestyle='-', label="Gradient", color='orange')
-ax3.set_ylabel("Gradient", color='orange')
-ax3.tick_params(axis='y', labelcolor='orange')
-
-# Add legends for both plots
-ax1.legend(loc="upper left")
-ax2.legend(loc="upper right")
-
-# Set title
-plt.title("Motor Power vs Vehicle Velocity")
-
-# Show the plot
-plt.show()
+plot_power(motor_power_predicted, motor_power_measured, vehicle_velocity, gradient_global)
 
 
