@@ -22,12 +22,12 @@ def plot_data(values, label='values'):
     plt.show()
 
 
-motor_current = load_data("motor_current.csv")
+motor_current = load_data("motor_current_day1.csv")
 plot_data(motor_current, "motor current")
-motor_voltage = load_data("motor_voltage.csv")
+motor_voltage = load_data("motor_voltage_day1.csv")
 plot_data(motor_voltage, "motor voltage")
 
-vehicle_velocity = load_data("vehicle_velocity.csv")
+vehicle_velocity = load_data("vehicle_velocity_day1.csv")
 plot_data(vehicle_velocity, "vehicle velocity")
 
 

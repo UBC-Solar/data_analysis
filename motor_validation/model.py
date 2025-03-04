@@ -172,19 +172,19 @@ def run_motor_model() -> (np.ndarray, np.ndarray):
 
     # from /Simulation/simulation/cache/route/route_data.npz
     route_data = np.load("route_data_FSGP.npz")
-    gis_coords = np.load("coords_day1.npy")
+    gis_coords = np.load("coords_day3.npy")
     forward_fill_nans(gis_coords)
-    gis_indices = np.load("coord_indices_day1.npy")
+    gis_indices = np.load("coord_indices_day3.npy")
 
 
     # Day 1 index 0 = index 269 of Simulation's gis index 0
     start_index = 269
-    gis_indices = np.roll(gis_indices, start_index)  # np.ndarray[float]
+    # gis_indices = np.roll(gis_indices, start_index)  # np.ndarray[float]
     gis_indices = forward_fill_nans(gis_indices)     # ensure there are no Nans since they mess with indexing
     gis_indices = np.round(gis_indices).astype(int)  # Convert to integers
 
     # ----- Expected distance estimate -----
-    speed_ms = load_data("vehicle_velocity.csv")
+    speed_ms = load_data("vehicle_velocity_day1.csv")
     speed_ms = np.append(speed_ms, 0)  # Proper way to append a value to a NumPy array
     speed_kmh = speed_ms * 3.6
 
@@ -259,9 +259,9 @@ motor_power_predicted, gradient_global = run_motor_model()
 
 
 
-motor_current = load_data("motor_current.csv")
-motor_voltage = load_data("motor_voltage.csv")
-vehicle_velocity = load_data("vehicle_velocity.csv")
+motor_current = load_data("motor_current_day1.csv")
+motor_voltage = load_data("motor_voltage_day1.csv")
+vehicle_velocity = load_data("vehicle_velocity_day1.csv")
 motor_power_measured = motor_current * motor_voltage
 motor_power_measured = np.append(motor_power_measured, 0)
 vehicle_velocity = np.append(vehicle_velocity, 0)
