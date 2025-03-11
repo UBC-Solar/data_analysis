@@ -48,12 +48,14 @@ def radius_of_curvature(x1, y1, x2, y2, x3, y3):
 def write_slip_angles(min_degrees, max_degrees, num_elements):
     # coefficients for pacekja's majick formula
     # https://www.edy.es/dev/docs/pacejka-94-parameters-explained-a-comprehensive-guide/
-    B = .5  # Stiffness (Example value for dry tarmac)
+    B = .25  # Stiffness (Example value for dry tarmac)
     C = 2.2 # Shape (Example value for dry tarmac)
     D = 2.75  # Peak (Example value for dry tarmac)
     E = 1.0  # Curvature (Example value for dry tarmac)
 
-    # HARD CODED MASS OF DAYBREAK - 350 KG
+
+
+    # HARD CODED MASS OF BRIGHTSIDE - 350 KG
     Fz = 350 * 9.81  # Normal load in Newtons
 
     slip_angles = np.linspace(min_degrees, max_degrees, num_elements)
@@ -108,7 +110,7 @@ def calculate_radii(waypoints):
     if repeated_last_coordinate:
         cornering_radii = np.append(cornering_radii, cornering_radii[0])
 
-    # ensure that super large radii are bounded by a large number, like 1000
+    # ensure that super large radii are bounded by a large number, like 10000
     cornering_radii = np.where(np.isnan(cornering_radii), 10000, cornering_radii)
     cornering_radii = np.where(cornering_radii > 10000, 10000, cornering_radii)
 

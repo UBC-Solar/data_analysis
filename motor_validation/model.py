@@ -3,6 +3,7 @@ from physics.environment.gis import GIS
 from geopy.distance import geodesic  # For distance calculation
 import matplotlib.pyplot as plt
 import pandas as pd
+import os
 
 from efficiencies import calculate_motor_efficiency, calculate_motor_controller_efficiency
 from plotting import plot_power, plot_forces, plot_cornering_data, plot_singe_value
@@ -10,6 +11,8 @@ from cornering_stuff import calculate_radii, get_slip_angle_for_tire_force
 
 
 from typing import Union
+
+DAY_3 = False
 
 
 bs_config = {
@@ -50,6 +53,37 @@ vehicle_frontal_area = bs_config["vehicle_frontal_area"]
 road_friction = bs_config["road_friction"]
 tire_radius = bs_config["tire_radius"]
 
+
+# load data from a csv using dataframe
+def load_data(path):
+    data = pd.read_csv(path)
+    values = data["Value"].to_numpy()
+    return values
+
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, "Validation_Data")
+
+# Use absolute paths
+motor_current = load_data(os.path.join(DATA_DIR, "motor_current_day3.csv"))
+motor_voltage = load_data(os.path.join(DATA_DIR, "motor_voltage_day3.csv"))
+vehicle_velocity = load_data(os.path.join(DATA_DIR, "vehicle_velocity_day3.csv"))
+gis_coords = np.load(os.path.join(DATA_DIR, "coords_day3.npy"))
+gis_indices = np.load(os.path.join(DATA_DIR, "coord_indices_day3.npy"))
+route_data = np.load(os.path.join(BASE_DIR, "route_data_FSGP.npz"))
+
+if not DAY_3:
+    motor_current = load_data(os.path.join(DATA_DIR, "motor_current_day1.csv"))
+    motor_voltage = load_data(os.path.join(DATA_DIR, "motor_voltage_day1.csv"))
+    vehicle_velocity = load_data(os.path.join(DATA_DIR, "vehicle_velocity_day1.csv"))
+    gis_coords = np.load(os.path.join(DATA_DIR, "coords_day1.npy"))
+    gis_indices = np.load(os.path.join(DATA_DIR, "coord_indices_day1.npy"))
+    print("Running on Day 1 FSGP Data")
+else:
+    print("Running on Day 3 FSGP Data")
+
+print(len(gis_indices), len(vehicle_velocity), len(motor_voltage))
+
 def forward_fill_nans(array: np.ndarray):
     for i in range(1, len(array)):
         if np.isnan(array[i]).any():
@@ -63,7 +97,6 @@ def calculate_total_motor_power(array, tick_start, tick_end):
 
 def calculate_cornering_losses(required_speed_kmh, gis_waypoints, tick):
     required_speed_ms = required_speed_kmh / 3.6
-
     cornering_radii = calculate_radii(gis_waypoints)
     plot_singe_value(cornering_radii)
     centripetal_lateral_force = vehicle_mass * (required_speed_ms ** 2) / cornering_radii
@@ -171,20 +204,18 @@ def run_motor_model() -> (np.ndarray, np.ndarray):
     tick = 1 # seconds
 
     # from /Simulation/simulation/cache/route/route_data.npz
-    route_data = np.load("route_data_FSGP.npz")
-    gis_coords = np.load("coords_day3.npy")
-    forward_fill_nans(gis_coords)
-    gis_indices = np.load("coord_indices_day3.npy")
 
+    forward_fill_nans(gis_coords)
 
     # Day 1 index 0 = index 269 of Simulation's gis index 0
     start_index = 269
     # gis_indices = np.roll(gis_indices, start_index)  # np.ndarray[float]
-    gis_indices = forward_fill_nans(gis_indices)     # ensure there are no Nans since they mess with indexing
-    gis_indices = np.round(gis_indices).astype(int)  # Convert to integers
+    gis_indices_local = gis_indices
+    gis_indices_local = forward_fill_nans(gis_indices_local)     # ensure there are no Nans since they mess with indexing
+    gis_indices_local = np.round(gis_indices_local).astype(int)  # Convert to integers
 
     # ----- Expected distance estimate -----
-    speed_ms = load_data("vehicle_velocity_day1.csv")
+    speed_ms = vehicle_velocity
     speed_ms = np.append(speed_ms, 0)  # Proper way to append a value to a NumPy array
     speed_kmh = speed_ms * 3.6
 
@@ -207,7 +238,7 @@ def run_motor_model() -> (np.ndarray, np.ndarray):
         current_coord
     )
 
-    closest_gis_indices = gis_indices # set to the route data provided by Miguel
+    closest_gis_indices = gis_indices_local # set to the route data provided by Miguel
 
 
     path_distances = gis.get_path_distances()
@@ -233,7 +264,7 @@ def run_motor_model() -> (np.ndarray, np.ndarray):
 
     # absolute_wind_speeds = simulation.meteorology.wind_speed
     # wind_directions = simulation.meteorology.wind_direction
-    wind_speeds = np.zeros(len(gis_indices)) # zero out wind speeds for now
+    wind_speeds = np.zeros(len(speed_kmh)) # zero out wind speeds for now
 
     # ----- Energy Calculations -----
 
@@ -248,20 +279,12 @@ def run_motor_model() -> (np.ndarray, np.ndarray):
     return motor_consumed_energy, gradients
 
 
-# load data from a csv using dataframe
-def load_data(path):
-    data = pd.read_csv(path)
-    values = data["Value"].to_numpy()
-    return values
+
 
 
 motor_power_predicted, gradient_global = run_motor_model()
 
 
-
-motor_current = load_data("motor_current_day1.csv")
-motor_voltage = load_data("motor_voltage_day1.csv")
-vehicle_velocity = load_data("vehicle_velocity_day1.csv")
 motor_power_measured = motor_current * motor_voltage
 motor_power_measured = np.append(motor_power_measured, 0)
 vehicle_velocity = np.append(vehicle_velocity, 0)
