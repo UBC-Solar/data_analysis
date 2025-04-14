@@ -39,24 +39,23 @@ points_2A = [[5.169867060561383, 4.1688311688311686], [15.509601181683795, 4.051
              [3282.865583456425, 2.701298701298701], [3319.0546528803548, 2.5974025974025974],
              [3344.9039881831613, 2.5129870129870127]]
 
+points_0A = [[np.float64(0.0), np.float64(4.184750733137831)], [np.float64(92.4092409240925), np.float64(4.140762463343108)], [np.float64(173.2673267326734), np.float64(4.118768328445748)], [np.float64(254.12541254125415), np.float64(4.096774193548388)], [np.float64(363.8613861386139), np.float64(4.074780058651027)], [np.float64(467.82178217821803), np.float64(4.052785923753666)], [np.float64(566.0066006600662), np.float64(4.016129032258065)], [np.float64(664.1914191419144), np.float64(3.9721407624633436)], [np.float64(745.0495049504949), np.float64(3.950146627565983)], [np.float64(837.4587458745876), np.float64(3.9208211143695015)], [np.float64(918.3168316831685), np.float64(3.8914956011730206)], [np.float64(1016.5016501650164), np.float64(3.8695014662756604)], [np.float64(1108.910891089109), np.float64(3.8401759530791795)], [np.float64(1224.4224422442248), np.float64(3.796187683284458)], [np.float64(1363.0363036303631), np.float64(3.7668621700879767)], [np.float64(1501.6501650165021), np.float64(3.7302052785923756)], [np.float64(1611.3861386138617), np.float64(3.6935483870967745)], [np.float64(1744.224422442244), np.float64(3.649560117302053)], [np.float64(1877.0627062706271), np.float64(3.620234604105572)], [np.float64(2038.7788778877891), np.float64(3.5689149560117306)], [np.float64(2235.148514851485), np.float64(3.5175953079178885)], [np.float64(2402.6402640264023), np.float64(3.473607038123167)], [np.float64(2558.5808580858084), np.float64(3.436950146627566)], [np.float64(2714.5214521452144), np.float64(3.385630498533725)], [np.float64(2801.1551155115512), np.float64(3.3563049853372435)], [np.float64(2939.7689768976893), np.float64(3.2756598240469215)], [np.float64(3032.1782178217823), np.float64(3.1876832844574787)], [np.float64(3113.036303630363), np.float64(3.085043988269795)], [np.float64(3170.7920792079203), np.float64(2.982404692082112)], [np.float64(3216.996699669967), np.float64(2.8797653958944283)], [np.float64(3263.201320132013), np.float64(2.7917888563049855)], [np.float64(3297.8547854785475), np.float64(2.6891495601173023)], [np.float64(3320.957095709571), np.float64(2.60850439882698)]]
 
 # Brightside Helpers
 
 
-num_modules = 13
-num_cells_per_module = 13
-num_cells = num_cells_per_module * num_modules
-cell_charge_rating = 3300
-cell_rating = cell_charge_rating
-nominal_capacity = cell_rating * num_cells
-min_voltage = 86.4
+__NUM_MODULES__ = 13
+__NUM_CELLS_PER_MODULE__ = 32
+__CELL_CHARGE_RATING__ = 3300
+__NOMINAL_CAPACITY__ = __CELL_CHARGE_RATING__ * __NUM_MODULES__
+__MIN_VOLTAGE__ = 86.4
 
 
 # Voltage Interpolation Estimation
 
 
 def interpolate_soc(voltage, interp_10A, interp_2A, current):
-    ref_currents = [10, 2]
+    ref_currents = [12, 0]
     current = np.clip(current, a_min=ref_currents[1], a_max=ref_currents[0])
 
     soc_10A_values = interp_10A(voltage)
@@ -85,6 +84,13 @@ def discharge_capacity_curve_from_cell_voltage_at_2A(cell_voltage):
         np.polyval(params_2A[6:], cell_voltage), params_2A[5])
 
 
+def discharge_capacity_curve_from_cell_voltage_at_0A(cell_voltage):
+    params_0A = [1.58045996e+06, -3.27621304e+01,  3.29321042e+00,  5.61544807e-05,
+ -6.31001294e+05,  2.16209325e-03, -4.20492692e+02]
+
+    return params_0A[0] / np.power(1 + np.exp(params_0A[1] * (cell_voltage - params_0A[2])), params_0A[3]) \
+        + params_0A[4] * np.exp(params_0A[5] * (cell_voltage - params_0A[6]))
+
 def discharged_capacity_from_cell_voltage(cell_voltage, current):
     interp_10A = interp1d(cell_voltage, discharge_capacity_curve_from_cell_voltage_at_10A(cell_voltage), kind='linear',
                           fill_value="extrapolate")
@@ -95,17 +101,29 @@ def discharged_capacity_from_cell_voltage(cell_voltage, current):
 
 
 def get_soc_from_voltage(voltage, current):
-    cell_voltage = voltage / num_modules  # V
-    discharged_capacity = discharged_capacity_from_cell_voltage(cell_voltage, current) * num_cells  # mAh
-    soc = (nominal_capacity - discharged_capacity) / nominal_capacity
+    cell_voltage = voltage / __NUM_CELLS_PER_MODULE__  # V
+    discharged_capacity = discharged_capacity_from_cell_voltage(cell_voltage, current) * __NUM_MODULES__  # mAh
+    soc = (__NOMINAL_CAPACITY__ - discharged_capacity) / __NOMINAL_CAPACITY__
+
+    return soc
+
+
+def get_soc_from_voltage_at_relaxation(voltage):
+    cell_voltage = voltage / __NUM_CELLS_PER_MODULE__  # V
+    interp_2A = interp1d(cell_voltage, discharge_capacity_curve_from_cell_voltage_at_0A(cell_voltage), kind='linear',
+                         fill_value="extrapolate")
+
+    discharged_capacity = interp_2A(cell_voltage) * __NUM_MODULES__  # mAh
+    soc = (__NOMINAL_CAPACITY__ - discharged_capacity) / __NOMINAL_CAPACITY__
 
     return soc
 
 
 def voltage_interpolation():
     # Demonstrate voltage interpolation
-    voltage = np.linspace(2.5, 4.2, 1000) * num_modules
+    voltage = np.linspace(2.5, 4.2, 1000) * __NUM_CELLS_PER_MODULE__
 
+    plt.plot(voltage, get_soc_from_voltage_at_relaxation(voltage), label="0A")
     plt.plot(voltage, get_soc_from_voltage(voltage, 2), label="2A")
     plt.plot(voltage, get_soc_from_voltage(voltage, 6), label="6A")
     plt.plot(voltage, get_soc_from_voltage(voltage, 10), label="10A")
@@ -113,6 +131,8 @@ def voltage_interpolation():
     plt.xlabel("Pack Voltage (V)")
     plt.ylabel("SoC")
     plt.title("SoC interpreted from pack voltage during discharge")
+
+    # soc_y = get_soc_from_voltage(voltage, 2)
 
     plt.legend()
     plt.show()
@@ -124,7 +144,7 @@ def voltage_interpolation():
 
 @jit(nopython=True)
 def delta_dod(current, time):
-    return -current * time / (nominal_capacity * 3.6)
+    return -current * time / (__NOMINAL_CAPACITY__ * 3.6)
 
 
 @jit(nopython=True)
@@ -156,7 +176,7 @@ def get_soc_from_coulomb_counting(initial_soc: float, battery_voltage, battery_c
                 soc[t] = soh[t] - dod[t]
 
         else:                           # Discharging
-            if V < min_voltage:         # Empty battery
+            if V < __MIN_VOLTAGE__:         # Empty battery
                 soh[t] = dod[t] = dod[i]
                 soc[t] = soc[i]
 
@@ -185,4 +205,4 @@ def coulomb_counting():
 
 
 if __name__ == "__main__":
-    coulomb_counting()
+    voltage_interpolation()
