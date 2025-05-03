@@ -2073,6 +2073,23 @@ files = [
 ]
 
 [[package]]
+name = "optype"
+version = "0.9.3"
+description = "Building blocks for precise & flexible type hints"
+optional = false
+python-versions = ">=3.10"
+files = [
+    {file = "optype-0.9.3-py3-none-any.whl", hash = "sha256:2935c033265938d66cc4198b0aca865572e635094e60e6e79522852f029d9e8d"},
+    {file = "optype-0.9.3.tar.gz", hash = "sha256:5f09d74127d316053b26971ce441a4df01f3a01943601d3712dd6f34cdfbaf48"},
+]
+
+[package.dependencies]
+typing-extensions = {version = ">=4.10", markers = "python_version < \"3.13\""}
+
+[package.extras]
+numpy = ["numpy (>=1.23.5)"]
+
+[[package]]
 name = "overrides"
 version = "7.7.0"
 description = "A decorator to automatically detect mismatch when overriding a method."
@@ -3252,6 +3269,23 @@ doc = ["jupyterlite-pyodide-kernel", "jupyterlite-sphinx (>=0.13.1)", "jupytext"
 test = ["Cython", "array-api-strict (>=2.0)", "asv", "gmpy2", "hypothesis (>=6.30)", "meson", "mpmath", "ninja", "pooch", "pytest", "pytest-cov", "pytest-timeout", "pytest-xdist", "scikit-umfpack", "threadpoolctl"]
 
 [[package]]
+name = "scipy-stubs"
+version = "1.15.2.2"
+description = "Type annotations for SciPy"
+optional = false
+python-versions = ">=3.10"
+files = [
+    {file = "scipy_stubs-1.15.2.2-py3-none-any.whl", hash = "sha256:f02fe66124b58bce5f0897ecd48d0e79226a999cc4e6984a9472520c20b8e4b6"},
+    {file = "scipy_stubs-1.15.2.2.tar.gz", hash = "sha256:0137d907d75381d2eda4f6af5b1d3211759cb193a0eadf5195716fb0b01ca3cb"},
+]
+
+[package.dependencies]
+optype = ">=0.9.3"
+
+[package.extras]
+scipy = ["scipy (>=1.15.2,<1.16)"]
+
+[[package]]
 name = "secretstorage"
 version = "3.3.3"
 description = "Python bindings to FreeDesktop.org Secret Service API"
@@ -3651,7 +3685,7 @@ sqlalchemy = ">=2.0.5,<3.0.0"
 
 [[package]]
 name = "ubc-solar-physics"
-version = "1.5.1.dev9+g7d5172b.d20250414"
+version = "1.5.1.dev14+g620fe89.d20250414"
 description = "UBC Solar's Simulation Environment"
 optional = false
 python-versions = ">=3.9"
@@ -3698,7 +3732,7 @@ zipp = "3.20.0"
 type = "git"
 url = "https://github.com/UBC-Solar/physics"
 reference = "battery_model_changes"
-resolved_reference = "7d5172b96768f664d3fe48125b3da085542a1a05"
+resolved_reference = "620fe89182812edf01a920e45b8f75f37d9fe442"
 
 [[package]]
 name = "uri-template"
@@ -3802,4 +3836,4 @@ test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", 
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "c044647d642a382ffa37c40501eac7cfbe02bda844c8272b091c000b06a78dd1"
+content-hash = "058e46ec6ee457302d95ee3485ffc9ddac02df8c3b3bcc33d9ec0031e7df53de"
