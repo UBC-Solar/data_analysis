@@ -10,7 +10,6 @@ python = "^3.11"
 jupyterlab = "^4.2.4"
 scipy = "^1.14.0"
 ipykernel = "^6.29.5"
-ubc-solar-physics = {git = "https://github.com/UBC-Solar/physics", rev = "battery_model_changes"}
 ubc-solar-data-tools = "^1.3.1"
 numpy = "^2.0.1"
 scipy-stubs = "^1.15.2.2"
