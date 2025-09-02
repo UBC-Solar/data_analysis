@@ -86,7 +86,7 @@ def get_motor_electrical_power(
 
     return mechanical_power / (motor_efficiency * motor_controller_efficiency)
 
-def estimate_laps(params: dict) -> float:
+def estimate_laps(params: dict, verbose: bool=False) -> float:
     # Speeds to evaluate (m/s)
     speeds_mps = np.linspace(0.0, 30.0, 30)
 
@@ -110,8 +110,9 @@ def estimate_laps(params: dict) -> float:
     elec_powers_w = mech_powers_w / (0.90 * 0.95) # TODO: revert
 
     # Compute available electrical power from battery
-    battery_input_w = (params["array_power_w"] - params["lvs_power_w"]) * params["mppt_efficiency"] * params["battery_input_efficiency"]
-    available_power_w = battery_input_w * params["battery_output_efficiency"]
+    solar_power_w = (params["array_power_w"] - params["lvs_power_w"]) * params["mppt_efficiency"] * params["battery_input_efficiency"]
+    battery_power_w = params["batt_energy_j"] / params["fsgp_race_time_s"]
+    available_power_w = (solar_power_w + battery_power_w) * params["battery_output_efficiency"]
 
     # Interpolate race speed from power/speed data points
     # VERY SUSPICIOUS CODE... XP IS NOT ALWAYS INCREASING
@@ -162,19 +163,21 @@ if __name__ == "__main__":
     # for key, val in grad_dict.items():
     #     print(f"{key}: {val}")
 
-    masses = np.linspace(0, 500, 500)
-    lap_counts = []
-    for mass in masses:
-        param_copy = deepcopy(params)
-        param_copy["vehicle_mass_kg"] = mass
-        lap_counts.append(estimate_laps(param_copy))
-    plt.plot(masses, lap_counts)
-    plt.xlabel("Car mass (kg)")
-    plt.ylabel("Estimated Lap Count")
-    plt.show()
+    # masses = np.linspace(0, 500, 500)
+    # lap_counts = []
+    # for mass in masses:
+    #     param_copy = deepcopy(params)
+    #     param_copy["vehicle_mass_kg"] = mass
+    #     lap_counts.append(estimate_laps(param_copy))
+    # plt.plot(masses, lap_counts)
+    # plt.xlabel("Car mass (kg)")
+    # plt.ylabel("Estimated Lap Count")
+    # plt.show()
+    #
+    # diffs = np.gradient(lap_counts) # spaced by 1kg so no need to scale
+    # plt.plot(masses, diffs)
+    # plt.xlabel("Car mass (kg)")
+    # plt.ylabel("Estimated Laps / Kg")
+    # plt.show()
 
-    diffs = np.diff(lap_counts) # spaced by 1kg so no need to scale
-    plt.plot(masses[:-1], diffs)
-    plt.xlabel("Car mass (kg)")
-    plt.ylabel("Estimated Laps / Kg")
-    plt.show()
+    print(estimate_laps(params))
