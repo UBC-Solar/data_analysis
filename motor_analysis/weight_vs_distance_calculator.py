@@ -11,7 +11,7 @@ from physics.models.motor import BasicMotor
 # from physics.models.battery import basic_battery
 from physics.models.constants import ACCELERATION_G, AIR_DENSITY
 import numdifftools as nd
-
+from sqlalchemy.cyextension.util import prefix_anon_map
 
 # ===============================================================
 # PARAMETERS
@@ -118,12 +118,18 @@ def estimate_laps(params: dict, verbose: bool=False) -> float:
     # VERY SUSPICIOUS CODE... XP IS NOT ALWAYS INCREASING
     speed_mps = np.interp(available_power_w, elec_powers_w, speeds_mps)
 
-    print(f"Interpolated speed: {speed_mps} m/s")
-
     # Laps completed in race time
     lap_count = (
         speed_mps * params["fsgp_race_time_s"] / params["fsgp_track_length_m"]
     )
+
+    if verbose:
+        print("\nLap Estimation Parameters:")
+        for key, val in params.items():
+            print(f"  > {key}: {val}")
+        print(f"Available Power: {available_power_w} W")
+        print(f"Interpolated speed: {speed_mps} m/s")
+        print(f"Estimated Lap Count: {lap_count} m/s")
 
     return float(lap_count)
 
@@ -148,36 +154,23 @@ if __name__ == "__main__":
         "acceleration_g": ACCELERATION_G,
     }
 
-    # def estimate_laps_vec(vec: list) -> float:
-    #     reconstructed_dict = {key: val for key, val in zip(params.keys(), vec)}
-    #     return estimate_laps(reconstructed_dict)
-    #
-    # # compute gradient at the given values
-    # grad_func = nd.Gradient(estimate_laps_vec)
-    # gradient = grad_func(list(params.values()))
-    #
-    # # Map gradient back to parameter names
-    # grad_dict = dict(zip(params.keys(), gradient))
-    #
-    # print("\n\nGradients (d_laps / d_param):\n")
-    # for key, val in grad_dict.items():
-    #     print(f"{key}: {val}")
+    def estimate_laps_vec(vec: list) -> float:
+        reconstructed_dict = {key: val for key, val in zip(params.keys(), vec)}
+        return estimate_laps(reconstructed_dict)
 
-    # masses = np.linspace(0, 500, 500)
-    # lap_counts = []
-    # for mass in masses:
-    #     param_copy = deepcopy(params)
-    #     param_copy["vehicle_mass_kg"] = mass
-    #     lap_counts.append(estimate_laps(param_copy))
-    # plt.plot(masses, lap_counts)
-    # plt.xlabel("Car mass (kg)")
-    # plt.ylabel("Estimated Lap Count")
-    # plt.show()
-    #
-    # diffs = np.gradient(lap_counts) # spaced by 1kg so no need to scale
-    # plt.plot(masses, diffs)
-    # plt.xlabel("Car mass (kg)")
-    # plt.ylabel("Estimated Laps / Kg")
-    # plt.show()
+    grad_func = nd.Gradient(estimate_laps_vec)
+    gradient = grad_func(list(params.values()))
+    grad_dict = dict(zip(params.keys(), gradient))
 
-    print(estimate_laps(params))
+    # Run estimation with the given parameters
+    estimate_laps(params, verbose=True)
+
+    print("\nGradients [d_laps / d_param]:")
+    for key, val in grad_dict.items():
+        print(f"  > {key}: {val}")
+
+    print("\nLap Count Change per 1% Parameter Increase:")
+    for key, val in grad_dict.items():
+        # Compute how many laps are gained when the param increases by 1% using Euler's Method
+        one_percent_value_change = val * params[key] * 0.01
+        print(f"  > {key}: {one_percent_value_change}")
