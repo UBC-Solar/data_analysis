@@ -70,27 +70,27 @@ if __name__ == '__main__':
     mech_powers_w = get_motor_mechanical_power(speeds_mps)
     elec_powers_w = get_motor_electrical_power(mech_powers_w, speeds_mps)
 
-    # plt.plot(speeds_mps, mech_powers_w, label='Mechanical Power')
-    # plt.plot(speeds_mps, elec_powers_w, label='Electrical Power')
-    # plt.plot(speeds_mps, elec_powers_w - mech_powers_w, label='Motor + MC Efficiency Losses (difference)')
-    #
-    # plt.xlabel('Speed (m/s)')
-    # plt.ylabel('Power (Watts)')
-    # plt.title('Motor Power vs Speed')
-    # plt.legend()
-    # plt.show()
+    plt.plot(speeds_mps, mech_powers_w, label='Mechanical Power')
+    plt.plot(speeds_mps, elec_powers_w, label='Electrical Power')
+    plt.plot(speeds_mps, elec_powers_w - mech_powers_w, label='Motor + MC Efficiency Losses (difference)')
+
+    plt.xlabel('Speed (m/s)')
+    plt.ylabel('Power (Watts)')
+    plt.title('Motor Power vs Speed')
+    plt.legend()
+    plt.show()
 
     motor_efficiency_loss_power, mc_efficiency_loss_power = get_efficiency_loss_power(mech_powers_w, speeds_mps)
 
-    # plt.plot(speeds_mps, motor_efficiency_loss_power, label='MC Power Loss')
-    # plt.plot(speeds_mps, mc_efficiency_loss_power, label='Motor Power Loss')
-    # plt.plot(speeds_mps, motor_efficiency_loss_power + mc_efficiency_loss_power, label='Motor + MC Efficiency Losses (sum)')
-    #
-    # plt.xlabel('Speed (m/s)')
-    # plt.ylabel('Power (Watts)')
-    # plt.title('Efficiency Power Losses vs Speed')
-    # plt.legend()
-    # plt.show()
+    plt.plot(speeds_mps, motor_efficiency_loss_power, label='MC Power Loss')
+    plt.plot(speeds_mps, mc_efficiency_loss_power, label='Motor Power Loss')
+    plt.plot(speeds_mps, motor_efficiency_loss_power + mc_efficiency_loss_power, label='Motor + MC Efficiency Losses (sum)')
+
+    plt.xlabel('Speed (m/s)')
+    plt.ylabel('Power (Watts)')
+    plt.title('Efficiency Power Losses vs Speed')
+    plt.legend()
+    plt.show()
 
     velocity_from_power_cs = CubicSpline(elec_powers_w, speeds_mps)
     max_power = np.max(elec_powers_w)
