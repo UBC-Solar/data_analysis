@@ -1,7 +1,6 @@
 # Formulae from here: https://www.desmos.com/calculator/s5vykogxbr
 # Modified to account for BasicMotor efficiency (motor and motor controller)
 
-from copy import deepcopy
 import numpy as np
 from numpy.typing import NDArray
 from typing import Callable
@@ -11,7 +10,6 @@ from physics.models.motor import BasicMotor
 # from physics.models.battery import basic_battery
 from physics.models.constants import ACCELERATION_G, AIR_DENSITY
 import numdifftools as nd
-from sqlalchemy.cyextension.util import prefix_anon_map
 
 # ===============================================================
 # PARAMETERS
@@ -105,12 +103,12 @@ def estimate_laps(params: dict, verbose: bool=False) -> float:
     )
 
     # Electrical power is after motor/motor controller efficiency losses
-    elec_powers_w = get_motor_electrical_power(
-        mechanical_power=mech_powers_w,
-        speed=speeds_mps,
-        tire_radius_m=params["tire_radius_m"],
-    )
-    # elec_powers_w = mech_powers_w / (0.90 * 0.95)
+    # elec_powers_w = get_motor_electrical_power(
+    #     mechanical_power=mech_powers_w,
+    #     speed=speeds_mps,
+    #     tire_radius_m=params["tire_radius_m"],
+    # )
+    elec_powers_w = mech_powers_w / 0.85
 
     # Compute available electrical power from battery
     solar_power_w = (params["array_power_w"] - params["lvs_power_w"]) * params["mppt_efficiency"] * params["battery_input_efficiency"]
