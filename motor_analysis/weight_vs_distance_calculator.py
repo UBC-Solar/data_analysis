@@ -18,25 +18,26 @@ from sqlalchemy.cyextension.util import prefix_anon_map
 # Default parameters for the car and FSGP race environment
 # ===============================================================
 
-BATT_ENERGY_J = 5000 * 3600  # Wh * J/Wh
-MPPT_EFFICIENCY = 0.97
-BATTERY_INPUT_EFFICIENCY = 0.95
-BATTERY_OUTPUT_EFFICIENCY = 0.95
-# THROUGH_BATTERY_FRACTION = 0.6 # account for the fact some array power is used directly and doesn't go through the battery?
-FSGP_RACE_TIME_S = 3 * 8 * 3600  # days * race hours/day * seconds/hour
-TIRE_RADIUS_M = 0.2032
-VEHICLE_MASS_KG = 350
-VEHICLE_FRONTAL_AREA = 1.1853
-DRAG_COEFFICIENT = 1.166e-01
-ROLLING_RESISTANCE_COEFFICIENT = 2.340e-02
-ARRAY_POWER_W = 950
-LVS_POWER_W = 12 * 1.5
-FSGP_TRACK_LENGTH_M = 5070
+# Format is aligned for easy pasting from spreadsheet
+BATT_ENERGY_J                  = 18000000
+MPPT_EFFICIENCY                = 0.97
+BATTERY_INPUT_EFFICIENCY       = 0.95
+BATTERY_OUTPUT_EFFICIENCY      = 0.95
+FSGP_RACE_TIME_S               = 86400
+TIRE_RADIUS_M                  = 0.2032
+VEHICLE_MASS_KG                = 350
+VEHICLE_FRONTAL_AREA           = 1.1853
+DRAG_COEFFICIENT               = 0.1166
+ROLLING_RESISTANCE_COEFFICIENT = 0.0234
+ARRAY_POWER_W                  = 749.04
+LVS_POWER_W                    = 18
+FSGP_TRACK_LENGTH_M            = 5070
 
 # ===============================================================
 # FUNCTIONS
 # Calculate the performance given a set of parameters
 # ===============================================================
+
 
 def find_longest_increasing_slice(arr):
     # Ensure input is a numpy array
@@ -50,6 +51,7 @@ def find_longest_increasing_slice(arr):
 
     # If the array is strictly increasing
     return arr
+
 
 def get_motor_mechanical_power(
     speed: NDArray,
@@ -86,9 +88,10 @@ def get_motor_electrical_power(
 
     return mechanical_power / (motor_efficiency * motor_controller_efficiency)
 
+
 def estimate_laps(params: dict, verbose: bool=False) -> float:
     # Speeds to evaluate (m/s)
-    speeds_mps = np.linspace(0.0, 30.0, 30)
+    speeds_mps = np.linspace(0.0, 30.0,  1000)
 
     # Mechanical power from aerodynamic drag + rolling resistance
     mech_powers_w = get_motor_mechanical_power(
@@ -102,12 +105,12 @@ def estimate_laps(params: dict, verbose: bool=False) -> float:
     )
 
     # Electrical power is after motor/motor controller efficiency losses
-    # elec_powers_w = get_motor_electrical_power(
-    #     mechanical_power=mech_powers_w,
-    #     speed=speeds_mps,
-    #     tire_radius_m=params["tire_radius_m"],
-    # )
-    elec_powers_w = mech_powers_w / (0.90 * 0.95) # TODO: revert
+    elec_powers_w = get_motor_electrical_power(
+        mechanical_power=mech_powers_w,
+        speed=speeds_mps,
+        tire_radius_m=params["tire_radius_m"],
+    )
+    # elec_powers_w = mech_powers_w / (0.90 * 0.95)
 
     # Compute available electrical power from battery
     solar_power_w = (params["array_power_w"] - params["lvs_power_w"]) * params["mppt_efficiency"] * params["battery_input_efficiency"]
@@ -115,7 +118,7 @@ def estimate_laps(params: dict, verbose: bool=False) -> float:
     available_power_w = (solar_power_w + battery_power_w) * params["battery_output_efficiency"]
 
     # Interpolate race speed from power/speed data points
-    # VERY SUSPICIOUS CODE... XP IS NOT ALWAYS INCREASING
+    # SUSPICIOUS CODE... XP IS NOT ALWAYS INCREASING
     speed_mps = np.interp(available_power_w, elec_powers_w, speeds_mps)
 
     # Laps completed in race time
@@ -129,7 +132,7 @@ def estimate_laps(params: dict, verbose: bool=False) -> float:
             print(f"  > {key}: {val}")
         print(f"Available Power: {available_power_w} W")
         print(f"Interpolated speed: {speed_mps} m/s")
-        print(f"Estimated Lap Count: {lap_count} m/s")
+        print(f"Estimated Lap Count: {lap_count}")
 
     return float(lap_count)
 
