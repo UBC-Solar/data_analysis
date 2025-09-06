@@ -37,20 +37,6 @@ FSGP_TRACK_LENGTH_M            = 5070
 # ===============================================================
 
 
-def find_longest_increasing_slice(arr):
-    # Ensure input is a numpy array
-    arr = np.asarray(arr)
-
-    # Check if the array is strictly increasing
-    for i in range(1, len(arr)):
-        if arr[i] <= arr[i - 1]:
-            # Return the longest strictly increasing slice from the beginning
-            return arr[:i]
-
-    # If the array is strictly increasing
-    return arr
-
-
 def get_motor_mechanical_power(
     speed: NDArray,
     air_density: float,
@@ -116,7 +102,7 @@ def estimate_laps(params: dict, verbose: bool=False) -> float:
     available_power_w = (solar_power_w + battery_power_w) * params["battery_output_efficiency"]
 
     # Interpolate race speed from power/speed data points
-    # SUSPICIOUS CODE... XP IS NOT ALWAYS INCREASING
+    # SUSPICIOUS CODE... XP IS GUARANTEED TO BE INCREASING
     speed_mps = np.interp(available_power_w, elec_powers_w, speeds_mps)
 
     # Laps completed in race time
