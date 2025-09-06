@@ -89,12 +89,11 @@ def estimate_laps(params: dict, verbose: bool=False) -> float:
     )
 
     # Electrical power is after motor/motor controller efficiency losses
-    # elec_powers_w = get_motor_electrical_power(
-    #     mechanical_power=mech_powers_w,
-    #     speed=speeds_mps,
-    #     tire_radius_m=params["tire_radius_m"],
-    # )
-    elec_powers_w = mech_powers_w / 0.85
+    elec_powers_w = get_motor_electrical_power(
+        mechanical_power=mech_powers_w,
+        speed=speeds_mps,
+        tire_radius_m=params["tire_radius_m"],
+    )
 
     # Compute available electrical power from battery
     solar_power_w = (params["array_power_w"] - params["lvs_power_w"]) * params["mppt_efficiency"] * params["battery_input_efficiency"]
