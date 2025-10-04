@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "data-query"
+version = "0.1.0"
+description = ""
+authors = ["Dekempsy4 <felixtoft09@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+ubc-solar-data-tools = "^1.3.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
