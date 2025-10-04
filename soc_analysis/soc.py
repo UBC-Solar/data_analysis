@@ -39,24 +39,23 @@ points_2A = [[5.169867060561383, 4.1688311688311686], [15.509601181683795, 4.051
              [3282.865583456425, 2.701298701298701], [3319.0546528803548, 2.5974025974025974],
              [3344.9039881831613, 2.5129870129870127]]
 
+points_0A = [[0.0, 2.0], [-4.7361299052773385, 4.5], [3500.0, 1.9940047961630696], [0.0, 4.170263788968825], [52.09742895805148, 4.134292565947242], [156.29228687415406, 4.086330935251798], [265.22327469553437, 4.062350119904076], [374.1542625169147, 4.0503597122302155], [492.55751014884964, 4.014388489208633], [606.2246278755073, 3.9904076738609113], [729.36400541272, 3.936450839328537], [857.2395128552096, 3.8944844124700237], [1013.531799729364, 3.8465227817745804], [1141.4073071718537, 3.8045563549160675], [1278.7550744248983, 3.7625899280575537], [1435.047361299053, 3.7386091127098324], [1615.020297699594, 3.6726618705035974], [1747.6319350473614, 3.6306954436450845], [1927.6048714479025, 3.57673860911271], [2102.8416779431664, 3.522781774580336], [2297.02300405954, 3.4808153477218227], [2472.259810554804, 3.456834532374101], [2642.7604871447907, 3.402877697841727], [2770.63599458728, 3.3609112709832134], [2917.45602165088, 3.3009592326139092], [3040.595399188092, 3.199040767386091], [3130.5818673883623, 3.0731414868105515], [3187.4154262516913, 2.9892086330935252], [3230.040595399188, 2.881294964028777], [3272.665764546685, 2.773381294964029], [3310.5548037889043, 2.65947242206235], [3334.235453315291, 2.5815347721822546], [3348.443843031123, 2.5035971223021583]]
 
 # Brightside Helpers
 
 
-num_modules = 13
-num_cells_per_module = 13
-num_cells = num_cells_per_module * num_modules
-cell_charge_rating = 3300
-cell_rating = cell_charge_rating
-nominal_capacity = cell_rating * num_cells
-min_voltage = 86.4
+__NUM_MODULES__ = 13
+__NUM_CELLS_PER_MODULE__ = 32
+__CELL_CHARGE_RATING__ = 3300
+__NOMINAL_CAPACITY__ = __CELL_CHARGE_RATING__ * __NUM_MODULES__
+__MIN_VOLTAGE__ = 86.4
 
 
 # Voltage Interpolation Estimation
 
 
 def interpolate_soc(voltage, interp_10A, interp_2A, current):
-    ref_currents = [10, 2]
+    ref_currents = [12, 0]
     current = np.clip(current, a_min=ref_currents[1], a_max=ref_currents[0])
 
     soc_10A_values = interp_10A(voltage)
@@ -85,6 +84,13 @@ def discharge_capacity_curve_from_cell_voltage_at_2A(cell_voltage):
         np.polyval(params_2A[6:], cell_voltage), params_2A[5])
 
 
+def discharge_capacity_curve_from_cell_voltage_at_0A(cell_voltage):
+    params_0A = [1.58045996e+06, -3.27621304e+01,  3.29321042e+00,  5.61544807e-05,
+ -6.31001294e+05,  2.16209325e-03, -4.20492692e+02]
+
+    return params_0A[0] / np.power(1 + np.exp(params_0A[1] * (cell_voltage - params_0A[2])), params_0A[3]) \
+        + params_0A[4] * np.exp(params_0A[5] * (cell_voltage - params_0A[6]))
+
 def discharged_capacity_from_cell_voltage(cell_voltage, current):
     interp_10A = interp1d(cell_voltage, discharge_capacity_curve_from_cell_voltage_at_10A(cell_voltage), kind='linear',
                           fill_value="extrapolate")
@@ -95,17 +101,29 @@ def discharged_capacity_from_cell_voltage(cell_voltage, current):
 
 
 def get_soc_from_voltage(voltage, current):
-    cell_voltage = voltage / num_modules  # V
-    discharged_capacity = discharged_capacity_from_cell_voltage(cell_voltage, current) * num_cells  # mAh
-    soc = (nominal_capacity - discharged_capacity) / nominal_capacity
+    cell_voltage = voltage / __NUM_CELLS_PER_MODULE__  # V
+    discharged_capacity = discharged_capacity_from_cell_voltage(cell_voltage, current) * __NUM_MODULES__  # mAh
+    soc = (__NOMINAL_CAPACITY__ - discharged_capacity) / __NOMINAL_CAPACITY__
+
+    return soc
+
+
+def get_soc_from_voltage_at_relaxation(voltage):
+    cell_voltage = voltage / __NUM_CELLS_PER_MODULE__  # V
+    interp_2A = interp1d(cell_voltage, discharge_capacity_curve_from_cell_voltage_at_0A(cell_voltage), kind='linear',
+                         fill_value="extrapolate")
+
+    discharged_capacity = interp_2A(cell_voltage) * __NUM_MODULES__  # mAh
+    soc = (__NOMINAL_CAPACITY__ - discharged_capacity) / __NOMINAL_CAPACITY__
 
     return soc
 
 
 def voltage_interpolation():
     # Demonstrate voltage interpolation
-    voltage = np.linspace(2.5, 4.2, 1000) * num_modules
+    voltage = np.linspace(2.5, 4.2, 1000) * __NUM_CELLS_PER_MODULE__
 
+    plt.plot(voltage, get_soc_from_voltage_at_relaxation(voltage), label="0A")
     plt.plot(voltage, get_soc_from_voltage(voltage, 2), label="2A")
     plt.plot(voltage, get_soc_from_voltage(voltage, 6), label="6A")
     plt.plot(voltage, get_soc_from_voltage(voltage, 10), label="10A")
@@ -113,6 +131,8 @@ def voltage_interpolation():
     plt.xlabel("Pack Voltage (V)")
     plt.ylabel("SoC")
     plt.title("SoC interpreted from pack voltage during discharge")
+
+    # soc_y = get_soc_from_voltage(voltage, 2)
 
     plt.legend()
     plt.show()
@@ -124,7 +144,7 @@ def voltage_interpolation():
 
 @jit(nopython=True)
 def delta_dod(current, time):
-    return -current * time / (nominal_capacity * 3.6)
+    return -current * time / (__NOMINAL_CAPACITY__ * 3.6)
 
 
 @jit(nopython=True)
@@ -156,7 +176,7 @@ def get_soc_from_coulomb_counting(initial_soc: float, battery_voltage, battery_c
                 soc[t] = soh[t] - dod[t]
 
         else:                           # Discharging
-            if V < min_voltage:         # Empty battery
+            if V < __MIN_VOLTAGE__:         # Empty battery
                 soh[t] = dod[t] = dod[i]
                 soc[t] = soc[i]
 
@@ -185,4 +205,4 @@ def coulomb_counting():
 
 
 if __name__ == "__main__":
-    coulomb_counting()
+    voltage_interpolation()

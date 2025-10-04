@@ -11,3 +11,11 @@ UBC Solar's data analysis environment
 
 ## Install Dependencies
 1. `poetry install --no-root`
+
+## Troubleshooting
+
+If your Jupyter kernel fails to resolve packages in the Poetry environment such as `data_tools` and `physics`, you may need to run
+```bash
+python -m ipykernel install --user --name=stg-data-analysis --display-name "stg-data-anaylsis"
+```
+and then select the "stg-data-anaylsis" kernel instead of the base "ipykernel". 
