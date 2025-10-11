@@ -161,4 +161,4 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 .idea/
 
-motor_analysis/.cache.sqlite
+v3/motor_analysis/.cache.sqlite

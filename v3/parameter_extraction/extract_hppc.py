@@ -1,7 +1,6 @@
 #%% md
 # If needed, the hardcoded values and bounds in the following cell can be changed. The script assumes there is a file called data.npz which contains data headers: voltage, power and soc. We also assume time ticks are 1 second.
 #%%
-import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from data_tools.query import DBClient 
@@ -48,8 +47,7 @@ plt.show()
 # I'm going to manually read off indices that are from right before a pulse, and index the SoC from interpolation at those indices.
 # 
 #%%
-from soc_analysis.datasheet_voltage_soc.soc_from_voltage import cell_soc_from_voltage
-from soc_analysis.soc import get_soc_from_voltage_at_relaxation
+from v3.soc_analysis.soc import get_soc_from_voltage_at_relaxation
 
 num_modules = 32
 
