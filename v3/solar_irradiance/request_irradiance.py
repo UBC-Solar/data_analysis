@@ -157,7 +157,7 @@ def get_irradiance_forecast(latitude: float,
 
 def open_meteo_archive_timeseries(latitude: float,
                                       longitude: float,
-                                      start_date: str,
+                                      start _date: str,
                                       end_date: str,
                                       field: str,
                                       timezone: str = "GMT") -> TimeSeries:
