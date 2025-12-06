@@ -1,0 +1,11 @@
+[project]
+name = "open-waters"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "influxdb>=5.3.2",
+    "matplotlib>=3.10.7",
+    "numpy>=2.3.5",
+    "pytz>=2024.2",
+    "ubc-solar-data-tools>=1.9.1",
+]

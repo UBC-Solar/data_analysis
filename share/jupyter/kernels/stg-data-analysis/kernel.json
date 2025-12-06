@@ -1,0 +1,15 @@
+{
+ "argv": [
+  "C:\\Users\\sanar\\PyCharmMiscProject\\.venv\\Scripts\\python.exe",
+  "-Xfrozen_modules=off",
+  "-m",
+  "ipykernel_launcher",
+  "-f",
+  "{connection_file}"
+ ],
+ "display_name": "stg-data-analysis",
+ "language": "python",
+ "metadata": {
+  "debugger": true
+ }
+}
