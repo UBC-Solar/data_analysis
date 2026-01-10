@@ -2,6 +2,9 @@ from data_tools import TimeSeries, DBClient
 from datetime import datetime
 
 def get_string_power(start: datetime, end: datetime, array_string: str, current_name: str, volt_name: str, client: DBClient) -> TimeSeries:
+    '''
+    Finds the total power of a string over a period of time via P = IV
+    '''
     print(f"{current_name}{array_string}")
     print(f"{volt_name}{array_string}")
     current:TimeSeries = client.query_time_series(start, end, f"{current_name}{array_string}")
@@ -11,6 +14,22 @@ def get_string_power(start: datetime, end: datetime, array_string: str, current_
     return power
 
 def get_total_power(start: datetime, end: datetime, array_strings: list[str], current_name: str, volt_name: str, client: DBClient = None) -> TimeSeries:
+    '''
+    Finds the total power of a set of strings over a period of time
+    
+    :param start: Description
+    :type start: datetime
+    :param end: Description
+    :type end: datetime
+    :param array_strings: List of array strings (Eg. [1, 2] or ["A", "B", "C"])
+    :type array_strings: list[str]
+    :param current_name: The name of the current sensors
+    :type current_name: str
+    :param volt_name: The name of the voltage sensors
+    :type volt_name: str
+    :return: A time series of the power
+    :rtype: TimeSeries
+    '''
     if client == None: client = DBClient(url="100.120.214.69:8086")
 
     total_power = None
