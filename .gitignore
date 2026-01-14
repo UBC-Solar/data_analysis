@@ -129,6 +129,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+*.code-workspace
 
 # Spyder project settings
 .spyderproject
@@ -162,3 +163,5 @@ cython_debug/
 .idea/
 
 v3/motor_analysis/.cache.sqlite
+
+

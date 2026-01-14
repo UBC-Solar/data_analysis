@@ -1,0 +1,13 @@
+[project]
+name = "array-efficiency-analysis"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "openmeteo-requests>=1.7.3",
+    "pandas>=2.3.3",
+    "pvlib>=0.13.1",
+    "pytz>=2024.2",
+    "requests-cache>=1.2.1",
+    "retry-requests>=2.0.0",
+    "ubc-solar-data-tools>=1.9.1",
+]
