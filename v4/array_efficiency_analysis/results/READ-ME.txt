@@ -1,0 +1,2 @@
+Both of these PDFs were generated using 'array_efficiency_analysis_refactor.ipynb' but with different inputs. 
+The changes and parameters are listed and commented out in the PDFs and the file itself.
