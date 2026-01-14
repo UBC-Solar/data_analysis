@@ -76,5 +76,3 @@ def model():
                                  0.8)
 
 
-model = model()
-print(model.calculateArrayTemperature())
