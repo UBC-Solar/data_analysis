@@ -23,9 +23,3 @@ setuptools = "^80.9.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[dependency-groups]
-dev = [
-    "openmeteo-requests>=1.7.3",
-    "ubc-solar-data-tools>=1.9.1",
-]
