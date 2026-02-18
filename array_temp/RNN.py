@@ -1,11 +1,11 @@
-import os
 import torch
 from torch import nn
-from torch.utils.data import TensorDataset, DataLoader
+
+
+
 #model class to declare RNN and defining a forward pass of the model
 
 device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
-
 
 class RNN(nn.Module):
 
@@ -16,8 +16,6 @@ class RNN(nn.Module):
         self.num_layers = num_layers  #stacked lstm layers
 
         #lstm: long short term memory - looks at long term dependencies in sequential data
-
-
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)  #correspond to input data shape
         self.seq_length = seq_length  #no of timestamps to look at to predict the next control output
 
@@ -27,7 +25,6 @@ class RNN(nn.Module):
 
 
     def forward(self, x):
-
 
         #x shape : [batch size, input size]
         # associate the state array (start + goal state) with timeseries dependency
@@ -43,7 +40,7 @@ class RNN(nn.Module):
         cell_states = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
 
         #forward propagate lstm
-        out, _ = self.lstm(x_repeated, (hidden_state, cell_states)) #out; tensor of shape(batch_soze, seq_length, hidden_size) - at the final time step
+        out, _ = self.lstm(x_repeated, (hidden_state, cell_states)) #out; tensor of shape(batch_size, seq_length, hidden_size) - at the final time step
         #decode the hidden state of t
         # predicted is a series of controls
         out = self.fc(out)
