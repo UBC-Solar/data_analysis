@@ -44,5 +44,6 @@ class RNN(nn.Module):
         #decode the hidden state of t
         # predicted is a series of controls
         out = self.fc(out)
+        #out shape: [batch_size, seq_length, hidden_size] - one control per timestamp
         return out
 

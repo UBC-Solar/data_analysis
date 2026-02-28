@@ -27,15 +27,16 @@ class RNN_Dataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         idx = self.indices[index] #index of the first timestep of seq
 
-        #input: current states + controls
+        #input: current states +  target state
 
-        current_state = self.states[idx]
-        target_state = self.states[idx +  self.seq_len] # state at t + seq_len
-        current_control = self.controls[idx]
-        x_seq = torch.cat([current_state, target_state, current_control], dim=0) #concatenate along feature dimension
-
-        #output: sequence of next controls to get from current to target
+        current_state = self.states[idx:idx+self.seq_len] # speed+ position
+        #target_state = self.states[idx +  self.seq_len] # state at t + seq_len
+        #current_control = self.controls[idx] #mech_brake + accelerator position
+        x_seq = torch.cat([current_state], dim=0) #concatenate along feature dimension
+        #x_seq = torch.cat([current_state])
+        #output: next controls to get from current to target (singular control at time of target state
         y_seq = self.controls[idx:idx + self.seq_len]
+
         return x_seq, y_seq
 
 
