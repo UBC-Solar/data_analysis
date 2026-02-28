@@ -22,6 +22,7 @@ def make_sequence_datasets(
     # Train/test split (time-series safe)
     n_total = len(df_xy)
     train_len = int(train_frac * n_total)
+    df_xy = df_xy.dropna(subset=state_cols + control_cols).reset_index(drop=True)
 
     df_train_raw = df_xy.iloc[:train_len].reset_index(drop=True)
     df_test_raw  = df_xy.iloc[train_len:].reset_index(drop=True)

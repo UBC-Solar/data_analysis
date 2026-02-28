@@ -29,7 +29,7 @@ class RNN(nn.Module):
         #x shape : [batch size, input size]
         # associate the state array (start + goal state) with timeseries dependency
         # this is done by repeating the input vector seq_len times
-        x_repeated = x.unsqueeze(1).repeat(1, self.seq_length, 1)
+        #x_repeated = x.unsqueeze(1).repeat(1, self.seq_length, 1)
 
         #inital hidden, cell states - these are internal memory vectors
         #hidden = short term memory, current output of LSTM at a given time
@@ -40,7 +40,7 @@ class RNN(nn.Module):
         cell_states = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
 
         #forward propagate lstm
-        out, _ = self.lstm(x_repeated, (hidden_state, cell_states)) #out; tensor of shape(batch_size, seq_length, hidden_size) - at the final time step
+        out, _ = self.lstm(x, (hidden_state, cell_states)) #out; tensor of shape(batch_size, seq_length, hidden_size) - at the final time step
         #decode the hidden state of t
         # predicted is a series of controls
         out = self.fc(out)
