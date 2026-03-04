@@ -28,8 +28,6 @@ class RNN(nn.Module):
 
         #x shape : [batch size, input size]
         # associate the state array (start + goal state) with timeseries dependency
-        # this is done by repeating the input vector seq_len times
-        #x_repeated = x.unsqueeze(1).repeat(1, self.seq_length, 1)
 
         #inital hidden, cell states - these are internal memory vectors
         #hidden = short term memory, current output of LSTM at a given time
@@ -44,6 +42,6 @@ class RNN(nn.Module):
         #decode the hidden state of t
         # predicted is a series of controls
         out = self.fc(out)
-        #out shape: [batch_size, seq_length, hidden_size] - one control per timestamp
+        #out shape: [batch_size, seq_length, hidden_size]
         return out
 
