@@ -58,14 +58,14 @@ def make_sequence_datasets(
     # DataLoaders
     train_loader = DataLoader(
         train_dataset,
-        batch_size=batch_size,
-        shuffle=True
+        batch_size=batch_size, num_workers=0,
+        shuffle=True, pin_memory = True
     )
 
     test_loader = DataLoader(
         test_dataset,
-        batch_size=batch_size,
-        shuffle=False
+        batch_size=batch_size,num_workers=0,
+        shuffle=False, pin_memory = True
     )
 
     return train_dataset, test_dataset, train_loader, test_loader, scaler
