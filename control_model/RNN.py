@@ -9,7 +9,8 @@ class RNN(nn.Module):
     def __init__(self, input_size, hidden_size, num_layers, seq_length, output_size):
         #inherits from nn.Module
         super(RNN, self).__init__()
-        self.hidden_size = hidden_size  #dim of memory inside lstm
+        self.hidden_size = hidden_size  #dim of memory inside lstm ie no of features in the hidden state that persists between timesteps
+        # a higher hidden size usually corresponds to complex dependencies
         self.num_layers = num_layers  #stacked lstm layers
 
         #lstm: long short term memory - looks at long term dependencies in sequential data

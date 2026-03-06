@@ -4,7 +4,100 @@ from torch import nn
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import StandardScaler
 from RNN_Dataset import RNN_Dataset
+#necessary imports
 
+
+from data_tools import query
+from data_tools.collections import TimeSeries
+import matplotlib.pyplot as plt
+import pandas as pd
+import dill
+import os
+import pytz
+from datetime import datetime, time, date
+
+
+import os
+import dill
+
+
+def combine_dfs(telemetry_names, index_common, all_dfs):
+    combined_df = pd.DataFrame(index=index_common)
+    combined_df.dropna()
+
+    for name, df in zip(telemetry_names, all_dfs):
+        # df_interp = self.resample(df, index_common)
+        combined_df[name] = df
+
+    return combined_df
+# get data from sunbeam and influx.
+# use sunbeam instead to save yourself a headache
+def make_df(source, name):
+    dfs = []
+
+    client = query.SunbeamClient()
+
+    for event in ["FSGP_2024_Day_1", "FSGP_2024_Day_2", "FSGP_2024_Day_3"]:
+        file = client.get_file(
+            origin="production",
+            event=event,
+            source=source,
+            name=name
+        ).unwrap()
+
+        dfs.append(
+            pd.DataFrame(
+                data=file.data,
+                index=file.data.datetime_x_axis
+            )
+        )
+
+    return pd.concat(dfs).sort_index()
+
+def make_single_df():
+    #mech_brake_pressed, accel_position, speed_kph, position = get_data()
+    out_dir = os.path.join("../../array_temp", "data", "control_state_fsgp_2024")
+
+    brake_path = os.path.join(out_dir, "brake_pressed.bin")
+    accel_path = os.path.join(out_dir, "acceleration.bin")
+    speed_path = os.path.join(out_dir, "speed_kph.bin")
+
+    filepaths = [brake_path, accel_path, speed_path]
+
+    loaded_datasets = []
+
+    for filepath in filepaths:
+        with open(filepath, "rb") as f:
+            data = dill.load(f)
+            loaded_datasets.append(data)
+
+    # unnpack
+    mech_brake_pressed, accel_position, speed_kph = loaded_datasets
+    df_mech_brake_pressed = pd.DataFrame(mech_brake_pressed, index=mech_brake_pressed.datetime_x_axis)
+    df_accel_position = pd.DataFrame(accel_position, index=accel_position.datetime_x_axis)
+    pos_df = make_df(source="localization", name="TrackIndex")
+    speed_df = make_df(source="ingress", name="VehicleVelocity")
+    all_dfs = [df_mech_brake_pressed, df_accel_position]
+    combined_df = combine_dfs(["mech_brake_pressed", "accel_position"], df_mech_brake_pressed.index, all_dfs)
+    final_df = pd.merge_asof(
+        df_mech_brake_pressed.sort_index(),
+        df_accel_position.sort_index(),
+        left_index=True,
+        right_index=True,
+        direction="nearest"
+    )
+    dfs = pd.concat([pos_df, speed_df], axis=1)
+    final_df = pd.merge_asof(
+        final_df.sort_index(),
+        dfs.sort_index(),
+        left_index=True,
+        right_index=True,
+        direction="nearest"
+    )
+    final_df.columns = ["brake_pressed", "accel_position", "position", "speed"]
+    final_df = final_df.sort_index()
+    final_df = final_df.ffill().dropna()
+    return final_df
 
 def make_sequence_datasets(
     df_xy,
