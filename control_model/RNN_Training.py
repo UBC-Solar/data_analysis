@@ -1,23 +1,13 @@
 #necessary imports
-import os
-import gc
 import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler
-from RNN_Dataset import RNN_Dataset
+from torch import *
+from torch import nn
+import gc
 from RNN import RNN
 from DataPreprocessing import *
-from data_tools import query
-from data_tools.collections import TimeSeries
+import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import dill
-import os
-import pytz
-from datetime import datetime, time, date
 
 
 #create training loop
@@ -27,7 +17,7 @@ def train_model(model, train_loader, test_loader, epochs):
     criterion = nn.MSELoss() #mean squared error loss
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
     train_losses, test_losses = [], []
-    for epoch in range(epochs):
+    for epoch in range(1,epochs):
 
         model.train()
         train_loss = 0.0
@@ -47,7 +37,7 @@ def train_model(model, train_loader, test_loader, epochs):
                 continue
 
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0) # clips gradients so they don't become too large
             optimizer.step()
             train_loss += loss.item()
 
@@ -71,7 +61,7 @@ def train_model(model, train_loader, test_loader, epochs):
         print(f"Epoch {epoch+1}/{epochs} | "
               f"Train Loss: {train_loss:.4f} | Test Loss: {test_loss:.4f}")
 
-        # Free memory each epoch
+        #free memory after each epoch
         gc.collect()
 
     return train_losses, test_losses
@@ -81,12 +71,12 @@ def train_model(model, train_loader, test_loader, epochs):
 if __name__ == "__main__":
 
     # requirements
-    STATE_COLS   = ["position", "speed"] #states
+    STATE_COLS   = ["speed"] #states
     CONTROL_COLS = ["brake_pressed", "accel_position"]  #controls
-    SEQ_LEN      = 100 #one minute
+    SEQ_LEN      = 300 #30 seconds
     STRIDE       = 100 #sliding window change between consecutive sequences, reduces overlapping
     BATCH_SIZE   = 128
-    EPOCHS       = 50
+    EPOCHS       = 40
     HIDDEN_SIZE  = 128
     NUM_LAYERS   = 2
 
@@ -104,8 +94,7 @@ if __name__ == "__main__":
         df, STATE_COLS, CONTROL_COLS,
         seq_len=SEQ_LEN, stride=STRIDE, batch_size=BATCH_SIZE
     )
-
-    # Free original dataframe — no longer needed
+    #delete stuff not required
     del df
     gc.collect()
 
