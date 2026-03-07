@@ -83,11 +83,11 @@ if __name__ == "__main__":
     # requirements
     STATE_COLS   = ["position", "speed"] #states
     CONTROL_COLS = ["brake_pressed", "accel_position"]  #controls
-    SEQ_LEN      = 600 #one minute
+    SEQ_LEN      = 100 #one minute
     STRIDE       = 100 #sliding window change between consecutive sequences, reduces overlapping
     BATCH_SIZE   = 128
-    EPOCHS       = 30
-    HIDDEN_SIZE  = 64
+    EPOCHS       = 50
+    HIDDEN_SIZE  = 128
     NUM_LAYERS   = 2
 
     if torch.cuda.is_available():
