@@ -11,7 +11,7 @@ from RNN_Dataset import RNN_Dataset
 from DataPreprocessing import make_single_df, make_sequence_datasets
 
 #constants
-STATE_COLS   = ["position", "speed"]
+STATE_COLS   = ["speed"]
 CONTROL_COLS = ["brake_pressed", "accel_position"]
 SEQ_LEN      = 300
 STRIDE       = 100
@@ -19,6 +19,9 @@ BATCH_SIZE   = 128
 HIDDEN_SIZE  = 128
 NUM_LAYERS   = 2
 MODEL_PATH   = "rnn_model.pth"
+
+
+# the purpose of this class is majorly to evaluate and visualize
 
 
 def load_model(model_path: str = MODEL_PATH, device: torch.device = None):
@@ -260,7 +263,7 @@ def plot_error_distribution(
     control_cols: list[str] = CONTROL_COLS,
     save_path: str = None,
 ) -> None:
-    """Histogram of residuals (real – predicted) for each control output."""
+    
     n_controls = len(control_cols)
     fig, axes = plt.subplots(1, n_controls,
                              figsize=(6 * n_controls, 4))
@@ -287,8 +290,8 @@ def plot_error_distribution(
 
 def print_metrics(y_real: np.ndarray, y_pred: np.ndarray,
                   control_cols: list[str] = CONTROL_COLS) -> None:
-    """Print MAE, RMSE and max-error per control output."""
-    print("\n── Prediction Metrics (unscaled) ────────────────────────")
+
+    print("\n── Prediction Metrics (unscaled)")
     for i, col in enumerate(control_cols):
         err  = y_real[:, i] - y_pred[:, i]
         mae  = np.mean(np.abs(err))
@@ -298,25 +301,12 @@ def print_metrics(y_real: np.ndarray, y_pred: np.ndarray,
     print("─" * 55)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 4.  Convenience "run everything" function
-# ─────────────────────────────────────────────────────────────────────────────
 
 def evaluate_and_plot(
     model_path: str = MODEL_PATH,
     save_fig: str = None,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """
-    End-to-end helper:
-      1. Loads data & rebuilds the scaler (same pipeline as training).
-      2. Loads the saved model.
-      3. Runs inference on the test split.
-      4. Prints metrics and shows the comparison plot.
 
-    Returns
-    -------
-    y_real, y_pred  – unscaled arrays you can use for further analysis.
-    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("[evaluate_and_plot] Loading data …")
@@ -343,23 +333,7 @@ def evaluate_and_plot(
 def get_sequence_timestamps(test_dataset, sample_idx, df_raw,
                             seq_len=SEQ_LEN, stride=STRIDE,
                             timestamp_col="timestamp"):
-    """
-    Get the timestamps corresponding to a sequence from test_dataset.
 
-    Parameters
-    ----------
-    test_dataset : RNN_Dataset (test split)
-    sample_idx   : which sequence you're inspecting
-    df_raw       : the original unprocessed dataframe (with timestamp column)
-    timestamp_col: name of the datetime column in df_raw
-
-    Returns
-    -------
-    timestamps : pd.Series of timestamps for that sequence window
-    start_row  : integer row index in df_raw where the sequence starts
-    end_row    : integer row index in df_raw where the sequence ends
-    """
-    # ── how many sequences are in the train split? ─────────────────────────
     # test_dataset starts after the train split in df_raw.
     # make_sequence_datasets does an 80/20 split on df_raw rows first,
     # so the test portion starts at this row:
@@ -392,9 +366,6 @@ def get_sequence_timestamps(test_dataset, sample_idx, df_raw,
 import matplotlib.pyplot as plt
 import numpy as np
 def plot_control_trajectory(model, test_dataset, scaler, state_cols, control_cols, sample_idx):
-    """
-    sample_idx: int or list of ints
-    """
     # Normalize sample_idx to always be a list
     if isinstance(sample_idx, int):
         sample_idx = [sample_idx]
@@ -466,7 +437,7 @@ def plot_control_trajectory(model, test_dataset, scaler, state_cols, control_col
     plt.tight_layout()
     plt.show()
 
-    # ── Plot states ───────────────────────────────────────────────────────────
+
     fig2, axes2 = plt.subplots(
         n_states, n_samples,
         figsize=(8 * n_samples, 4 * n_states),
