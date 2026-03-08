@@ -18,7 +18,6 @@ def train_model(model, train_loader, test_loader, epochs):
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
     train_losses, test_losses = [], []
     for epoch in range(1,epochs):
-
         model.train()
         train_loss = 0.0
         for x_batch, y_batch in train_loader:

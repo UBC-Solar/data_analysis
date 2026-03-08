@@ -9,6 +9,8 @@ import os
 import dill
 
 
+# this file will create a single dataframe to use for the RNN. Further scales the data, creates a testing/training split and makes individual sequences to furhter feed into the RNN.
+
 def combine_dfs(telemetry_names, index_common, all_dfs):
     combined_df = pd.DataFrame(index=index_common)
     combined_df.dropna()
@@ -23,7 +25,6 @@ def make_df(source, name):
     dfs = []
 
     client = query.SunbeamClient()
-
     for event in ["FSGP_2024_Day_1", "FSGP_2024_Day_2", "FSGP_2024_Day_3"]:
         file = client.get_file(
             origin="production",
@@ -88,6 +89,10 @@ def make_single_df():
     final_df = final_df.ffill().dropna()
     return final_df
 
+
+#given the raw dataframe, creates a testing / training split. Only training data is scaled.
+#create sequences of given length and feed to dataloaders (tensor conversions are done via class RNN_Dataset).
+# returns scaled training dataset, unscaled testing dataset, train_loader and test_loader (Dataloaders for iterating over the dataset and can return batches of samples).
 def make_sequence_datasets(
     df_xy,
     state_cols,
