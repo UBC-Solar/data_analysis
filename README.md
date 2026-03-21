@@ -79,7 +79,7 @@ This will create a `pyproject.toml` file in your project to track dependencies.
 
 Use `uv add package_name` to install packages you will need. For example,
 
-``uv add numpy, matplotlib, ubc-solar-data-tools, pytz.``
+``uv add numpy matplotlib ubc-solar-data-tools pytz``
 
 Use the packages that your project requires. Don't worry if you forget something, you can always `uv add` it later.
 
