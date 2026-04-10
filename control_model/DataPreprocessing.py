@@ -1,16 +1,15 @@
+from data_tools import TimeSeries
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import StandardScaler
-from RNN_Dataset import RNN_Dataset
-#necessary imports
 from sklearn.preprocessing import MinMaxScaler
-from data_tools import query
 import pandas as pd
 import numpy as np
 import os
 import dill
-from data_tools import *
-from localization_roc import *
+from RNN_Dataset import *
+from RNN_Training import *
 
+from localization_roc import *
 
 #this file will create a single dataframe to use for the RNN. Further scales the data, creates a testing/training split and makes individual sequences to furhter feed into the RNN.
 
@@ -31,14 +30,14 @@ from sklearn.preprocessing import StandardScaler
 #from RNN_Dataset import RNN_Dataset
 #necessary imports
 from sklearn.preprocessing import MinMaxScaler
-from data_tools import query
+#from data_tools import query
 import pandas as pd
 import numpy as np
 import os
 import dill
-from data_tools import *
-import control_model.localization_roc
-from control_model.localization_roc import *
+# from data_tools import *
+# import control_model.localization_roc
+# from control_model.localization_roc import *
 
 
 #this file will create a single dataframe to use for the RNN. Further scales the data, creates a testing/training split and makes individual sequences to furhter feed into the RNN.
@@ -93,40 +92,54 @@ def make_df(source, event):
 
     return pd.concat(dfs).sort_index()
 
-
 def make_single_df():
-   for event in ["FSGP_2024_Day_1", "FSGP_2024_Day_2", "FSGP_2024_Day_3"]:
-       speed_kph, mech_brake_pressed, accel_position, position = make_df(source="ingress", event=event)
+    day_dfs = []
+    radius_of_curvature = calculate_circular_track_curvature(coords, step=2)  # compute once
 
+    for event in ["FSGP_2024_Day_1", "FSGP_2024_Day_2", "FSGP_2024_Day_3"]:
+        speed_kph, mech_brake_pressed, accel_position, position = make_df(source="ingress", event=event)
 
-   pd.merge_asof(speed_kph.sort_index(), mech_brake_pressed)
-   scaler = MinMaxScaler(feature_range=(0, 1))
-  #scale acceleration position before standard scaling.
-   df_accel_position = scaler.fit_transform(accel_position.reshape(-1, 1))
-   radius_of_curvature = calculate_circular_track_curvature(coords(), step=2)
-   calculated_roc = [radius_of_curvature[int(i) - 1] for i in position]
-   calculated_roc_df = pd.DataFrame(calculated_roc).sort_index()
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        df_accel_position = pd.DataFrame(
+            scaler.fit_transform(accel_position),
+            index=accel_position.index
+        )
 
-   all_dfs = [mech_brake_pressed, df_accel_position]
-   final_df = pd.merge_asof(
-        mech_brake_pressed.sort_index(),
-        pd.DataFrame(df_accel_position, index = accel_position.datetime_x_axis),
-        left_index=True,
-        right_index=True,
-        direction="nearest"
-    )
-   dfs = pd.concat([calculated_roc_df, speed_kph], axis=1)
-   final_df = pd.merge_asof(
-        final_df.sort_index(),
-        dfs.sort_index(),
-        left_index=True,
-        right_index=True,
-        direction="nearest"
-    )
-   final_df.columns = ["brake_pressed", "accel_position", "speed", "ROC"]
-   final_df = final_df.sort_index()
-   final_df = final_df.ffill().dropna()
-   return final_df
+        position_series = position.squeeze()
+        calculated_roc = position_series.map(
+            lambda pos: radius_of_curvature[int(pos) % len(radius_of_curvature)],
+            na_action='ignore'
+        )
+        calculated_roc_df = calculated_roc.to_frame(name='curvature').dropna()
+
+        day_df = pd.merge_asof(
+            mech_brake_pressed.sort_index(),
+            df_accel_position.sort_index(),
+            left_index=True,
+            right_index=True,
+            direction="nearest"
+        )
+        day_df = pd.merge_asof(
+            day_df.sort_index(),
+            speed_kph.sort_index().dropna(),
+            left_index=True,
+            right_index=True,
+            direction="nearest"
+        )
+        day_df = pd.merge_asof(
+            day_df.sort_index(),
+            calculated_roc_df.sort_index().dropna(),
+            left_index=True,
+            right_index=True,
+            direction="nearest"
+        )
+
+        day_df.columns = ["brake_pressed", "accel_position", "speed", "ROC"]
+        day_df = day_df.sort_index().ffill().dropna()
+        day_dfs.append(day_df)
+
+    final_df = pd.concat(day_dfs, axis=0).sort_index()
+    return final_df
 
 
 #given the raw dataframe, creates a testing / training split. Only training data is scaled.
@@ -149,7 +162,11 @@ def make_sequence_datasets(
     n_total = len(df_xy)
     train_len = int(train_frac * n_total)
     df_xy = df_xy.dropna(subset=state_cols + control_cols).reset_index(drop=True)
+# In make_sequence_datasets, split before concatenating days
+# OR split the final_df by date
 
+   # df_train_raw = final_df[final_df.index < "2024-07-18"]  # Day 1 + 2
+    #df_test_raw  = final_df[final_df.index >= "2024-07-18"] # Day 3
     df_train_raw = df_xy.iloc[:train_len].reset_index(drop=True)
     df_test_raw  = df_xy.iloc[train_len:].reset_index(drop=True)
 
@@ -185,7 +202,7 @@ def make_sequence_datasets(
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size, num_workers=0,
-        shuffle=True, pin_memory = True
+        shuffle=False, pin_memory = True
     )
 
     test_loader = DataLoader(
