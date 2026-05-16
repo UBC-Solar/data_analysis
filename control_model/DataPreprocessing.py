@@ -1,46 +1,23 @@
-from data_tools import TimeSeries
-from torch.utils.data import DataLoader
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import MinMaxScaler
-import pandas as pd
-import numpy as np
-import os
-import dill
-from RNN_Dataset import *
-from RNN_Training import *
-
-from localization_roc import *
-
-#this file will create a single dataframe to use for the RNN. Further scales the data, creates a testing/training split and makes individual sequences to furhter feed into the RNN.
-
-
-def combine_dfs(telemetry_names, index_common, all_dfs):
-    combined_df = pd.DataFrame(index=index_common)
-    combined_df.dropna()
-
-    for name, df in zip(telemetry_names, all_dfs):
-        combined_df[name] = df
-
-    return combined_df
-# get data from sunbeam and influx.
-# use sunbeam instead to save yourself a headache
-
-from torch.utils.data import DataLoader
-from sklearn.preprocessing import StandardScaler
-#from RNN_Dataset import RNN_Dataset
 #necessary imports
+from torch.utils.data import DataLoader
+from sklearn.preprocessing import StandardScaler
+from RNN_Dataset import RNN_Dataset
+from localization_roc import *
 from sklearn.preprocessing import MinMaxScaler
-#from data_tools import query
+from data_tools import query
+from data_tools import *
 import pandas as pd
 import numpy as np
-import os
-import dill
-# from data_tools import *
-# import control_model.localization_roc
-# from control_model.localization_roc import *
 
 
-#this file will create a single dataframe to use for the RNN. Further scales the data, creates a testing/training split and makes individual sequences to furhter feed into the RNN.
+
+
+
+#this file will create a single dataframe to use for the RNN. Has multiple helper functions for:
+# scaling data
+# creating a testing/training split
+# Making individual sequences into a format feedable to the RNN.
+
 
 
 def combine_dfs(telemetry_names, index_common, all_dfs):
@@ -54,6 +31,12 @@ def combine_dfs(telemetry_names, index_common, all_dfs):
 # get data from sunbeam and influx.
 # use sunbeam instead to save yourself a headache
 def make_df(source, event):
+    """
+    Method to query data from sunbeam, align timeseries together and make a single pandas dataframe.
+    :param source: str refers to the sunbeam data pipeline source.
+    :param event: str refers to the sunbeam data pipeline event.
+    :return: pandas dataframe consisting of queried data (Vehicle Velocity, Brake Pressed, Acceleration Position)
+    """
     dfs = []
     files = []
     client = query.SunbeamClient()
@@ -74,11 +57,11 @@ def make_df(source, event):
             name="TrackIndex"
         ).unwrap().data
 
-    files = TimeSeries.align(files[0], files[1], files[2], file_pos);
+    files = TimeSeries.align(files[0], files[1], files[2], file_pos)
     last_idx = np.where(np.isnan(file_pos))[0][0]
     file_pos = file_pos[0:last_idx]
     files.append(file_pos)
-    files = TimeSeries.align(files[0], files[1], files[2], files[3]);
+    files = TimeSeries.align(files[0], files[1], files[2], files[3]) # remember to align twice.
     for file2 in files:
             dfs.append(
                 pd.DataFrame(
@@ -86,10 +69,6 @@ def make_df(source, event):
                     index=file2.datetime_x_axis
                 )
             )
-
-
-
-
     return pd.concat(dfs).sort_index()
 
 def make_single_df():
@@ -150,7 +129,7 @@ def make_sequence_datasets(
     state_cols,
     control_cols,
     seq_len,
-    stride=100,
+    stride=50,
     train_frac=0.8,
     batch_size=64,
 ):
@@ -162,15 +141,11 @@ def make_sequence_datasets(
     n_total = len(df_xy)
     train_len = int(train_frac * n_total)
     df_xy = df_xy.dropna(subset=state_cols + control_cols).reset_index(drop=True)
-# In make_sequence_datasets, split before concatenating days
-# OR split the final_df by date
 
-   # df_train_raw = final_df[final_df.index < "2024-07-18"]  # Day 1 + 2
-    #df_test_raw  = final_df[final_df.index >= "2024-07-18"] # Day 3
     df_train_raw = df_xy.iloc[:train_len].reset_index(drop=True)
     df_test_raw  = df_xy.iloc[train_len:].reset_index(drop=True)
 
-    # Fit scaler ONLY on training data
+    # Fit scaler only on training data
     scaler = StandardScaler()
     scaler.fit(df_train_raw[cols_to_scale])
 
