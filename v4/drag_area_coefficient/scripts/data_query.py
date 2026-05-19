@@ -1,8 +1,9 @@
+import numpy as np
 from data_tools.collections import TimeSeries
 from data_tools.query import DBClient
 from datetime import datetime
 
-PACK_CURRENT_THRESHOLD = 0.10682  # pack current never reads 0; it settles to this constant (it is rounded up)
+PACK_CURRENT_THRESHOLD = 0.10682  # pack current never reads 0; its lowest value is this constant (constant is rounded up here)
 
 if __name__ == "__main__":
     client = DBClient()
@@ -28,10 +29,22 @@ if __name__ == "__main__":
         brake_pressed: TimeSeries = client.query_time_series(
             start=start,
             stop=stop,
-            field="BreakPressed",
+            field="BrakePressed",
             units=""
         )
 
+        cruise_start_index = np.where(pack_current <= PACK_CURRENT_THRESHOLD)[0][0]
+        cruise_end_index = np.where(brake_pressed > 0)[0][0]
+
+        cruise_start_time = pack_current.datetime_x_axis[cruise_start_index]
+        cruise_end_time = brake_pressed.datetime_x_axis[cruise_end_index]
+
+        cruise_speed: TimeSeries = motor_rotating_speed.slice(cruise_start_time, cruise_end_time)
+        cruise_speed.meta = motor_rotating_speed.meta
+        cruise_speed.plot()
+
+
+        
 
 
 
