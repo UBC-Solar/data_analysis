@@ -8,8 +8,19 @@ PACK_CURRENT_THRESHOLD = 0.10682  # pack current never reads 0; its lowest value
 if __name__ == "__main__":
     client = DBClient()
 
-    start_times = [datetime.fromisoformat("2026-04-02T20:02:30Z")]
-    stop_times = [datetime.fromisoformat("2026-04-02T20:03:10Z")]
+    start_times = [datetime.fromisoformat("2026-04-02T20:02:30Z"),
+                   datetime.fromisoformat("2026-04-02T20:07:10Z"),
+                   datetime.fromisoformat("2026-04-02T20:26:05Z"),
+                   datetime.fromisoformat("2026-04-02T20:35:40Z"),
+                   datetime.fromisoformat("2026-04-02T21:05:25Z"),
+                   datetime.fromisoformat("2026-04-02T21:10:30Z"),]
+    
+    stop_times = [datetime.fromisoformat("2026-04-02T20:03:10Z"),
+                  datetime.fromisoformat("2026-04-02T20:07:30Z"),
+                  datetime.fromisoformat("2026-04-02T20:26:24Z"),
+                  datetime.fromisoformat("2026-04-02T20:36:15Z"),
+                  datetime.fromisoformat("2026-04-02T21:05:40Z"),
+                  datetime.fromisoformat("2026-04-02T21:10:40Z"),]
 
     for start, stop in zip(start_times, stop_times):
         motor_rotating_speed: TimeSeries = client.query_time_series(
