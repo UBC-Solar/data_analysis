@@ -41,7 +41,6 @@ if __name__ == "__main__":
             start=start,
             stop=stop,
             field="BrakePressed",
-            units=""
         )
 
         cruise_start_index = np.where(pack_current <= PACK_CURRENT_THRESHOLD)[0][0]
