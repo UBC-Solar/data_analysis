@@ -1,3 +1,8 @@
+"""
+Experimenting with querying data from InfluxDB. Not used in the final analysis.
+"""
+
+
 import numpy as np
 from data_tools.collections import TimeSeries
 from data_tools.query import DBClient
