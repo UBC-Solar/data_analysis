@@ -175,7 +175,6 @@ class GPSSensor(Sensor):
     def __init__(self, rate_hz=4.0, noise_m=5.0, bias_m=(0, 0), drift_ms=(0, 0), rng_seed=21):
         # convert all metre noise to degrees using small angle approximation
         # use: dely = dellat * pi/180 * r_earth
-
         super().__init__(rate_hz, rng_seed)
         noise_lat = noise_m / RADIUS_EARTH * (180 / np.pi)
         noise_lon = noise_m / RADIUS_EARTH * (180 / np.pi)
