@@ -64,7 +64,7 @@ def curvature_to_time(x: np.ndarray, y: np.ndarray,
     time per segment is give by  Arc length between consecutive points / average speed of those points.
     :return numpy array
     """
-    ds = np.hypot(np.diff(x), np.diff(y))  # segment lengths (m)
+    ds = np.hypot(np.diff(x), np.diff(y))  # segment lengths
     v_avg = 0.5 * (speed[:-1] + speed[1:])  # average speed per segment
     dt = ds / v_avg  # time per segment
     t = np.concatenate([[0], np.cumsum(dt)])
