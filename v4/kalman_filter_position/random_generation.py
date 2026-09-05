@@ -6,7 +6,7 @@ import os
 
 # the goal here is to create a csv dataset that consists of random data so that we can simulate necessary failure conditions as necessary.
 # Overall, this includes the sensor class and the Path generator (this will interpolate lat/lon over time).
-# The Voronoi Track Generator is responsible for generating the track and exporting this to a csv format.
+# The Voronoi Track Generator is responsible for generating the track and speed based on the curvature profile. It also exports this to a csv format.
 RADIUS_EARTH = 6371000.0
 
 
@@ -127,7 +127,6 @@ class Path:
         return np.interp(t, self.t, self._ax)
 
     def ay(self, t):
-
         return np.interp(t, self.t, self._ay)
 
 
@@ -146,7 +145,7 @@ class Sensor:
         """
         generates measuremesnts over the full path duration.
         :param path:
-        :return:
+        :return the sample dataframe
         """
         t = np.arange(0, path.duration, 1.0 / self.rate_hz)
         df = self.measure(path, t)
@@ -201,13 +200,19 @@ class GPSSensor(Sensor):
         bias = {"lat": bias_deg_lat, "lon": bias_deg_lon}
         drift_rate = {"lat": drift_deg_lat, "lon": drift_deg_lon}
         # could potentially add noise by direclty adding to the x,y coordinates too?
-        super().__init__(rate_hz, noise_std, bias, drift_rate, rng_seed = rng_seed)
+        super().__init__(rate_hz, noise_std, bias, drift_rate, rng_seed=rng_seed)
 
     def measure(self, path, t):
         return pd.DataFrame({"lat": path.lat(t), "lon": path.lon(t)})
 
 
 class IMUSensor(Sensor):
+    """
+    Outputs acceleration along the three coordinate axes
+     (ax, ay and az)
+
+    """
+
     def __init__(self, rate_hz=30.0, noise_std_mss=0.05,  # gaussian noise in m/s^2,
                  bias_mss=0.02, drift_rate=0.0, rng_seed=23):
         noise_std = {"ax": noise_std_mss, "ay": noise_std_mss, "az": 0.02}
@@ -225,17 +230,16 @@ class IMUSensor(Sensor):
 
 class SpeedSensor(Sensor):
     """
-    outputs scalar ground speed in m/s.
+    Outputs scalar ground speed in m/s.
 
     """
 
-    def __init__(self, rate_hz=30.0, noise_mps=0.5, bias_mps=0.0, slip_factor=1.0, rng_seed=44):
+    def __init__(self, rate_hz=30.0, noise_mps=0.5, bias_mps=0.0, rng_seed=44):
         noise_std = {"speed": noise_mps}
         bias = {"speed": bias_mps}
         super().__init__(rate_hz, noise_std, bias, {}, rng_seed)
-        self.slip_factor = slip_factor
 
     def measure(self, path: Path, t: np.ndarray) -> pd.DataFrame:
         return pd.DataFrame({
-            "speed": path.speed(t) * self.slip_factor
+            "speed": path.speed(t)
         })

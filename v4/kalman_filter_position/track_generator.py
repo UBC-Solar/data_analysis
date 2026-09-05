@@ -34,7 +34,7 @@ def xy_to_latlon(x: np.ndarray, y: np.ndarray,
 def assign_speed(curvature_abs: np.ndarray,
                  v_max: float = 18.0,
                  v_min: float = 6.0,
-                 curvature_threshold: float = 1 / 20.0):
+                 curvature_threshold: float = 1 / 20.0, rng: np.random.Generator = None):
     """
     Assign speed at each point on the centerline based on local curvature.
 
@@ -45,11 +45,25 @@ def assign_speed(curvature_abs: np.ndarray,
 
     curvature_abs         : absolute curvature at each centerline point
     v_max                 : maximum speed on straights (m/s)
-    v_min                 : minimum speed in corners (m/s) around 22 km/h
-    curvature_threshold   : curvature at which v_min kicks in
+    v_min                 : minimum speed in corners (m/s)
+    curvature_threshold   : curvature at which v_min is used
                             1/20 = radius of 20 m
     :return numpy array of the speed values.
     """
+    # Normalise curvature to [0, 1] where 0 = straight, 1 = max corner
+    # rng = rng or np.random.default_rng()
+    #
+    # #random baseline
+    # speed = rng.uniform(v_min, v_max, len(curvature_abs))
+    # #sharp corners use hard minimum
+    # sharp = curvature_abs >=curvature_threshold
+    # straight_threshold = 1/100
+    # speed[sharp] = v_min
+    # speed = np.convolve(speed, np.ones(25)/25, mode="same")
+    #
+    # straight = curvature_abs <= straight_threshold
+    # speed[straight] = v_max
+    # return np.clip(speed, v_min, v_max)
     # Normalise curvature to [0, 1] where 0 = straight, 1 = max corner
     k_norm = np.clip(curvature_abs / curvature_threshold, 0, 1)
     speed = v_max - k_norm * (v_max - v_min)
@@ -217,6 +231,7 @@ class VoronoiTrackGenerator:
 
             self._x, self._y = x_c, y_c
             self._speed, self._k = speed, k_abs
+            self._lat, self._lon = lat, lon
 
             df = pd.DataFrame({"time_s": t_arr, "lat": lat, "lon": lon})
             print(f"Track generated (attempt {attempt}): "
@@ -232,6 +247,46 @@ class VoronoiTrackGenerator:
             return df
 
         raise RuntimeError("Could not generate valid track in 50 attempts.")
+
+    def generate_multilap(self, n_laps, speed_change=0.50, rng=None):
+        """
+        Build continuous multilap path that uses the same spatial geometry with a slight shift in the v_min / v_max values
+
+
+        """
+
+        rng = rng or np.random.default_rng()
+        frames = []
+        t_cursor = 0.0
+        self.lap_info = []
+
+        for lap in range(
+                n_laps):  # for every lap we randomly either increment/decrement the v_min / v_max by a number in a specified range.
+            change = 1.0 + rng.uniform(-speed_change, speed_change)
+            v_max_lap = self.v_max * change
+            v_min_lap = self.v_min * change
+
+            speed_lap = assign_speed(self._k, v_max_lap, v_min_lap, self.curvature_threshold)
+            t_arr = curvature_to_time(self._x, self._y, speed_lap)  # arc length unaffected by centering
+
+            lap_df = pd.DataFrame({
+                "time_s": t_arr + t_cursor,
+                "lat": self._lat,
+                "lon": self._lon,
+            })
+            if lap > 0:
+                lap_df = lap_df.iloc[1:]  # drop duplicate (same time stamps as previous lap's last row)
+
+            frames.append(lap_df)
+            lap_duration = t_arr[-1]
+            self.lap_info.append({
+                "lap": lap + 1, "v_max": v_max_lap, "v_min": v_min_lap,
+                "duration": lap_duration, "start_t": t_cursor,
+            })
+
+            t_cursor += lap_duration
+
+        return pd.concat(frames, ignore_index=True)
 
     def plot(self, df: pd.DataFrame, title: str = "Voronoi Track",
              save_path: str = None):
@@ -284,26 +339,34 @@ class VoronoiTrackGenerator:
             print(f"Saved → {save_path}")
         plt.show()
 
+    def plot_multilap(self, df: pd.DataFrame, title: str = "Multi-Lap Track", save_path: str = None):
 
-if __name__ == "__main__":
-    gen = VoronoiTrackGenerator(
-        n_points=70,
-        n_regions=10,
-        min_bound=10.0,
-        max_bound=500.0,
-        origin_lat=49.2606,
-        origin_lon=-123.2460,
-        v_max=18.0,
-        v_min=6.0,  # 22 km/h in tight corners
-        min_radius_m=20.0,  # minimum corner radius
-        n_centerline=1000,
-        rng_seed=40,  # set None for a different track each run
-    )
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        fig.suptitle(title, fontweight="bold")
 
-    print("Generating Voronoi track...")
-    df = gen.generate()
-    out_dir = os.path.dirname(os.path.abspath(__file__))
-    df.to_csv(os.path.join(out_dir, "ground_truth_path.csv"), index=False)
-    print("[Saved ground_truth_path.csv]")
+        # Trajectory geometry is identical every lap
+        ax = axes[0]
+        ax.plot(self._x, self._y, "royalblue", lw=1.5)
+        ax.plot(self._x[0], self._y[0], "ko", ms=8, label="Start/Finish", zorder=5)
+        ax.set_aspect("equal");
+        ax.grid(alpha=0.3)
+        ax.set_xlabel("East (m)");
+        ax.set_ylabel("North (m)")
+        ax.set_title("Track (fixed geometry)");
+        ax.legend()
+        ax = axes[1]
+        for info in self.lap_info:
+            speed_lap = assign_speed(self._k, info["v_max"], info["v_min"], self.curvature_threshold)
+            t_arr = curvature_to_time(self._x, self._y, speed_lap) + info["start_t"]
+            ax.plot(t_arr, speed_lap * 3.6, lw=1.2, label=f"Lap {info['lap']}")
+        ax.set_xlabel("Time (s)");
+        ax.set_ylabel("Speed (km/h)")
+        ax.set_title("Speed Profile per Lap");
+        ax.legend(fontsize=8);
+        ax.grid(alpha=0.3)
 
-    gen.plot(df, title="Voronoi Random Track")
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=130, bbox_inches="tight")
+            print(f"Saved → {save_path}")
+        plt.show()
