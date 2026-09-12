@@ -1,20 +1,8 @@
 # necessary imports:
-import os
-import gc
-import argparse
-import numpy as np
-import pandas as pd
-import torch
-import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler
-from RNN import RNN
-from RNN_Dataset import RNN_Dataset
-from DataPreprocessing import make_single_df, make_sequence_datasets
-from DataPreprocessing import *
-from visualization import *
+from v4.control_model.visualization import *
 from inference import *
 
-# Constants as they must match with RNN training requirements:
+# Fixed constants as they must match with RNN training requirements:
 state_cols = ["speed", "ROC"]  # input state features
 control_cols = ["brake_pressed", "accel_position"]  # output control targets
 SEQ_LEN = 150  # sequence length (15 seconds at 0.1 granularity)
@@ -197,44 +185,66 @@ class Control_Model():
 
 
 
-#example usage:
+    def eval_model(self, df_test_scaled, scaler, start_idx, n_samples):
+        """
+        Method to evaluate model before visualization and accuracy metrics.
+        Runs the model over a contiguous block of scaled inputs and returns unscaled predicted control arrays. Inference is performed row-by-row i.e. stride is set to 1 in order to avoid scaling inconsistencies due to boundary spikes in data.
 
-if __name__ == "__main__":
-    #for the sake of an example usage, i'm directly loading data from my downloaded dataframe.
+
+        :param df_test_scaled : pd.DataFrame
+            Scaled test dataframe (output of ``scale_inputs``).
+        :param scaler : sklearn.preprocessing.StandardScaler
+            The scaler fitted on training data, required for unscaling outputs.
+        :param start_idx : int, optional
+            First row index to evaluate (default 0).
+        :param n_samples : int, optional
+            Number of consecutive rows to evaluate.  Defaults to all rows
+            after ``start_idx``.
+
+        :return y_true : np.ndarray, shape (n_samples, n_controls)
+            Unscaled ground-truth control values.
+        :return y_pred : np.ndarray, shape (n_samples, n_controls)
+            Unscaled model-predicted control values.
+        """
+
+        self.model.eval()  # evaluate
+        device = next(self.model.parameters()).device
+        n_states = len(self.state_cols)
+        n_controls = len(self.control_cols)
+        cols = self.state_cols + self.control_cols
+
+        if n_samples is None:
+            n_samples = len(df_test_scaled) - start_idx
+
+        h, c = None, None  # cold initialise hidden states
+        all_y_true, all_y_pred = [], []
+
+        for i in range(start_idx, start_idx + n_samples):
+            row = df_test_scaled[cols].iloc[i].values.astype(np.float32)
+
+            # required shape: (1, 1, n_states)
+            x_tensor = torch.tensor(row[:n_states]).unsqueeze(0).unsqueeze(0).to(device)
+
+            with torch.no_grad():
+                hidden = (h,
+                          c) if h is not None else None  # carry over hidden states, do not reinitialise every time the loop runs.
+                y_pred_tensor, (h, c) = self.model(x_tensor, hidden=hidden)
+                h, c = h.detach(), c.detach()  # break gradient flow
+
+            all_y_true.append(row[n_states:])
+            all_y_pred.append(y_pred_tensor.squeeze().cpu().numpy())
+
+    # unscale via dummy full-width arrays
+    # note that scaler was fit on all columns together, so subsets cannot be inverted in isolation
+    # build full width dummy array
+    # insert subset into the column adn then inverse transform
+        def unscale(arr, col_slice):
+            dummy = np.zeros((len(arr), n_states + n_controls))
+            dummy[:, col_slice] = arr
+            return scaler.inverse_transform(dummy)[:, col_slice]
+
+        y_true = unscale(np.array(all_y_true), slice(n_states, None))
+        y_pred = unscale(np.array(all_y_pred).reshape(-1, n_controls), slice(n_states, None))
+        return y_true, y_pred
 
 
-    import pandas as pd
-    from sklearn.preprocessing import StandardScaler
-
-    STATE_COLS = ["speed", "ROC"]
-    CONTROL_COLS = ["brake_pressed", "accel_position"]
-
-    final_df = pd.read_csv("fsgp_2024_training_data.csv")
-    final_df = final_df.set_index("Unnamed: 0")
-
-    train_len = (0.8 * len(final_df))
-    df_train = final_df.iloc[:train_len]
-
-    scaler = StandardScaler()
-    scaler.fit(df_train[STATE_COLS + CONTROL_COLS])
-
-    speed = np.ndarray(final_df['speed'])
-    curvature = np.ndarray(final_df['ROC'])
-    #
-    # speed     = np.random.uniform(10, 15, size=500).astype(np.float32)
-    # curvature = np.random.uniform(-0.05, 0.05, size=500).astype(np.float32)
-
-    cm = Control_Model(
-        model_path      = "rnn_model (1).pth",
-        scaler          = scaler,
-        input_speed     = speed,
-        input_curvature = curvature,
-    )
-
-    accel_position, brake_pressed = cm.predict()
-    import matplotlib.pyplot as plt
-    plot_control_trajectory_extended(model, speed, curvature, accel_position, brake_pressed, state_cols=STATE_COLS, control_cols=CONTROL_COLS, seq_len=SEQ_LEN, start_idx = 0)
-    plt.show()
-
-    print(f"accel_position : min={accel_position.min():.3f}  max={accel_position.max():.3f}")
-    print(f"brake_pressed  : min={brake_pressed.min():.3f}   max={brake_pressed.max():.3f}")
