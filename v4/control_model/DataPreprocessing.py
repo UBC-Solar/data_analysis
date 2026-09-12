@@ -1,4 +1,4 @@
-#necessary imports
+# necessary imports
 from torch.utils.data import DataLoader
 from sklearn.preprocessing import StandardScaler
 from RNN_Dataset import RNN_Dataset
@@ -9,15 +9,14 @@ from data_tools import *
 import pandas as pd
 import numpy as np
 
+"""
 
-
-
-
-#this file will create a single dataframe to use for the RNN. Has multiple helper functions for:
-# scaling data
-# creating a testing/training split
-# Making individual sequences into a format feedable to the RNN.
-
+This file will create a single dataframe to use for the RNN. Has multiple helper functions for:
+ -scaling data
+ -creating a testing/training split
+ -Making individual sequences into a format feedable to the RNN.
+ 
+"""
 
 
 def combine_dfs(telemetry_names, index_common, all_dfs):
@@ -28,6 +27,8 @@ def combine_dfs(telemetry_names, index_common, all_dfs):
         combined_df[name] = df
 
     return combined_df
+
+
 # get data from sunbeam and influx.
 # use sunbeam instead to save yourself a headache
 def make_df(source, event):
@@ -49,27 +50,27 @@ def make_df(source, event):
         ).unwrap().data
         files.append(file)
 
-
     file_pos = client.get_file(
-            origin="production",
-            event=event,
-            source="localization",
-            name="TrackIndex"
-        ).unwrap().data
+        origin="production",
+        event=event,
+        source="localization",
+        name="TrackIndex"
+    ).unwrap().data
 
     files = TimeSeries.align(files[0], files[1], files[2], file_pos)
     last_idx = np.where(np.isnan(file_pos))[0][0]
     file_pos = file_pos[0:last_idx]
     files.append(file_pos)
-    files = TimeSeries.align(files[0], files[1], files[2], files[3]) # remember to align twice.
+    files = TimeSeries.align(files[0], files[1], files[2], files[3])  # remember to align twice.
     for file2 in files:
-            dfs.append(
-                pd.DataFrame(
-                    data=file2,
-                    index=file2.datetime_x_axis
-                )
+        dfs.append(
+            pd.DataFrame(
+                data=file2,
+                index=file2.datetime_x_axis
             )
+        )
     return pd.concat(dfs).sort_index()
+
 
 def make_single_df():
     day_dfs = []
@@ -121,20 +122,18 @@ def make_single_df():
     return final_df
 
 
-#given the raw dataframe, creates a testing / training split. Only training data is scaled.
-#create sequences of given length and feed to dataloaders (tensor conversions are done via class RNN_Dataset).
+# given the raw dataframe, creates a testing / training split. Only training data is scaled.
+# create sequences of given length and feed to dataloaders (tensor conversions are done via class RNN_Dataset).
 # returns scaled training dataset, unscaled testing dataset, train_loader and test_loader (Dataloaders for iterating over the dataset and can return batches of samples).
 def make_sequence_datasets(
-    df_xy,
-    state_cols,
-    control_cols,
-    seq_len,
-    stride=50,
-    train_frac=0.8,
-    batch_size=64,
+        df_xy,
+        state_cols,
+        control_cols,
+        seq_len,
+        stride=50,
+        train_frac=0.8,
+        batch_size=64,
 ):
-
-
     cols_to_scale = state_cols + control_cols
 
     # Train/test split (time-series safe)
@@ -143,7 +142,7 @@ def make_sequence_datasets(
     df_xy = df_xy.dropna(subset=state_cols + control_cols).reset_index(drop=True)
 
     df_train_raw = df_xy.iloc[:train_len].reset_index(drop=True)
-    df_test_raw  = df_xy.iloc[train_len:].reset_index(drop=True)
+    df_test_raw = df_xy.iloc[train_len:].reset_index(drop=True)
 
     # Fit scaler only on training data
     scaler = StandardScaler()
@@ -151,10 +150,10 @@ def make_sequence_datasets(
 
     # Apply scaling
     df_train = df_train_raw.copy()
-    df_test  = df_test_raw.copy()
+    df_test = df_test_raw.copy()
 
     df_train[cols_to_scale] = scaler.transform(df_train_raw[cols_to_scale])
-    df_test[cols_to_scale]  = scaler.transform(df_test_raw[cols_to_scale])
+    df_test[cols_to_scale] = scaler.transform(df_test_raw[cols_to_scale])
 
     # Create datasets
     train_dataset = RNN_Dataset(
@@ -177,15 +176,13 @@ def make_sequence_datasets(
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size, num_workers=0,
-        shuffle=False, pin_memory = True
+        shuffle=False, pin_memory=True
     )
 
     test_loader = DataLoader(
         test_dataset,
-        batch_size=batch_size,num_workers=0,
-        shuffle=False, pin_memory = True
+        batch_size=batch_size, num_workers=0,
+        shuffle=False, pin_memory=True
     )
 
     return train_dataset, test_dataset, train_loader, test_loader, scaler
-
-

@@ -46,12 +46,12 @@ def evaluate_model(model, df_test_scaled, scaler, state_cols, control_cols, star
     brake_pred_binary = (brake_pred > 0.5).astype(int)
     brake_true_binary = (brake_true > 0.5).astype(int)
 
-    print("=== accel_position (regression) ===")
+    print("accel_position (regression)")
     print(f"  MAE:  {mean_absolute_error(accel_true, accel_pred):.4f}")
     print(f"  RMSE: {np.sqrt(mean_squared_error(accel_true, accel_pred)):.4f}")
     print(f"  R²:   {r2_score(accel_true, accel_pred):.4f}")
 
-    print("\n=== brake_pressed (classification) ===")
+    print("\nbrake_pressed (classification)")
     print(f"  Accuracy:  {accuracy_score(brake_true_binary, brake_pred_binary):.4f}")
     print(f"  Precision: {precision_score(brake_true_binary, brake_pred_binary, zero_division=0):.4f}")
     print(f"  Recall:    {recall_score(brake_true_binary, brake_pred_binary, zero_division=0):.4f}")
