@@ -1,3 +1,4 @@
+# Necessary imports:
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -199,7 +200,6 @@ def run_ekf(ekf, gps_df, imu_df, speed_df, path, t_offset=0.0):
 
 def evaluate(traj: pd.DataFrame, path: Path,
              gps_df: pd.DataFrame, lap_duration, label: str = ""):
-
     """
 
 
